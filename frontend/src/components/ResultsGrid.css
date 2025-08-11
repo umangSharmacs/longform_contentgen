@@ -1,0 +1,41 @@
+/* Results Grid Component Styles */
+#needlespotter-longformgen-root .results-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 15px;
+  width: 100%;
+}
+
+#needlespotter-longformgen-root .results-grid .research-card {
+  flex: 1 1 calc(33.333% - 10px);
+  min-width: 300px;
+}
+
+#needlespotter-longformgen-root .result-data {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #333;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+}
+
+/* Responsive adjustments for results grid */
+@media (max-width: 1200px) {
+  #needlespotter-longformgen-root .results-grid .research-card {
+    flex: 1 1 calc(50% - 7.5px);
+  }
+}
+
+@media (max-width: 768px) {
+  #needlespotter-longformgen-root .results-grid .research-card {
+    flex: 1 1 100%;
+  }
+}

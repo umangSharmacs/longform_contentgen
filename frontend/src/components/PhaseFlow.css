@@ -1,0 +1,155 @@
+/* Phase Flow Component Styles */
+#needlespotter-longformgen-root .phase-flow {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 100%;
+}
+
+#needlespotter-longformgen-root .phase-flow-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#needlespotter-longformgen-root .phase-step {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  position: relative;
+}
+
+#needlespotter-longformgen-root .phase-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+#needlespotter-longformgen-root .phase-number .number {
+  color: #6c757d;
+}
+
+#needlespotter-longformgen-root .phase-number .checkmark {
+  color: white;
+  font-size: 1rem;
+}
+
+#needlespotter-longformgen-root .phase-step.active .phase-number .number {
+  color: white;
+}
+
+#needlespotter-longformgen-root .phase-content {
+  flex: 1;
+  min-width: 0;
+}
+
+#needlespotter-longformgen-root .phase-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+#needlespotter-longformgen-root .phase-description {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+#needlespotter-longformgen-root .phase-connector {
+  flex: 1;
+  height: 2px;
+  background: #e9ecef;
+  margin: 0 10px;
+  position: relative;
+}
+
+/* Phase States */
+#needlespotter-longformgen-root .phase-step.completed .phase-number {
+  background: #28a745;
+  border: 2px solid #28a745;
+}
+
+#needlespotter-longformgen-root .phase-step.completed .phase-label {
+  color: #28a745;
+}
+
+#needlespotter-longformgen-root .phase-step.completed .phase-connector {
+  background: #28a745;
+}
+
+#needlespotter-longformgen-root .phase-step.active .phase-number {
+  background: #007cba;
+  border: 2px solid #007cba;
+  color: white;
+}
+
+#needlespotter-longformgen-root .phase-step.active .phase-label {
+  color: #007cba;
+}
+
+#needlespotter-longformgen-root .phase-step.active .phase-connector {
+  background: linear-gradient(to right, #007cba 50%, #e9ecef 50%);
+}
+
+#needlespotter-longformgen-root .phase-step.upcoming .phase-number {
+  background: white;
+  border: 2px solid #e9ecef;
+}
+
+#needlespotter-longformgen-root .phase-step.upcoming .phase-label {
+  color: #6c757d;
+}
+
+#needlespotter-longformgen-root .phase-step.upcoming .phase-description {
+  color: #adb5bd;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #needlespotter-longformgen-root .phase-flow {
+    padding: 15px;
+  }
+  
+  #needlespotter-longformgen-root .phase-flow-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  #needlespotter-longformgen-root .phase-step {
+    width: 100%;
+  }
+  
+  #needlespotter-longformgen-root .phase-connector {
+    display: none;
+  }
+  
+  #needlespotter-longformgen-root .phase-number {
+    margin-right: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  #needlespotter-longformgen-root .phase-flow {
+    padding: 12px;
+  }
+  
+  #needlespotter-longformgen-root .phase-label {
+    font-size: 0.85rem;
+  }
+  
+  #needlespotter-longformgen-root .phase-description {
+    font-size: 0.75rem;
+  }
+}

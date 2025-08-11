@@ -1,0 +1,308 @@
+/* Selection Phase Component Styles */
+#needlespotter-longformgen-root .selection-phase {
+  width: 100%;
+}
+
+#needlespotter-longformgen-root .selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+#needlespotter-longformgen-root .selection-title h2 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+#needlespotter-longformgen-root .selection-title p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+#needlespotter-longformgen-root .selection-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#needlespotter-longformgen-root .control-button {
+  padding: 8px 16px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  color: #333;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#needlespotter-longformgen-root .control-button:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+#needlespotter-longformgen-root .control-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#needlespotter-longformgen-root .control-button.select-all {
+  background: #007cba;
+  color: white;
+  border-color: #007cba;
+}
+
+#needlespotter-longformgen-root .control-button.select-all:hover:not(:disabled) {
+  background: #005a87;
+}
+
+#needlespotter-longformgen-root .control-button.clear-selection {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+#needlespotter-longformgen-root .control-button.clear-selection:hover:not(:disabled) {
+  background: #c82333;
+}
+
+#needlespotter-longformgen-root .control-button.back-button {
+  background: #6c757d;
+  color: white;
+  border-color: #6c757d;
+}
+
+#needlespotter-longformgen-root .control-button.back-button:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+#needlespotter-longformgen-root .selection-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 12px 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+#needlespotter-longformgen-root .total-items {
+  color: #666;
+}
+
+#needlespotter-longformgen-root .selected-items {
+  color: #007cba;
+  font-weight: 500;
+}
+
+#needlespotter-longformgen-root .uploaded-files {
+  color: #28a745;
+  font-weight: 500;
+}
+
+#needlespotter-longformgen-root .results-section {
+  margin-bottom: 20px;
+}
+
+#needlespotter-longformgen-root .file-upload-section {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+#needlespotter-longformgen-root .file-upload-section h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+#needlespotter-longformgen-root .file-upload-section p {
+  margin: 0 0 15px 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+#needlespotter-longformgen-root .file-upload-area {
+  position: relative;
+  border: 2px dashed #dee2e6;
+  border-radius: 6px;
+  padding: 30px;
+  text-align: center;
+  transition: border-color 0.2s ease;
+  margin-bottom: 15px;
+}
+
+#needlespotter-longformgen-root .file-upload-area:hover {
+  border-color: #007cba;
+}
+
+#needlespotter-longformgen-root .file-input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+#needlespotter-longformgen-root .file-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+#needlespotter-longformgen-root .upload-icon {
+  font-size: 2rem;
+  color: #6c757d;
+}
+
+#needlespotter-longformgen-root .file-types {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+#needlespotter-longformgen-root .uploaded-files-list {
+  margin-top: 15px;
+}
+
+#needlespotter-longformgen-root .uploaded-files-list h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+#needlespotter-longformgen-root .files-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#needlespotter-longformgen-root .file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+}
+
+#needlespotter-longformgen-root .file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#needlespotter-longformgen-root .file-name {
+  font-size: 0.9rem;
+  color: #333;
+  font-weight: 500;
+}
+
+#needlespotter-longformgen-root .file-size {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+#needlespotter-longformgen-root .remove-file-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background-color 0.2s ease;
+}
+
+#needlespotter-longformgen-root .remove-file-btn:hover {
+  background: #c82333;
+}
+
+#needlespotter-longformgen-root .selection-footer {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+#needlespotter-longformgen-root .proceed-button {
+  padding: 12px 24px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+#needlespotter-longformgen-root .proceed-button:hover:not(:disabled) {
+  background: #218838;
+}
+
+#needlespotter-longformgen-root .proceed-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #needlespotter-longformgen-root .selection-header {
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px;
+  }
+  
+  #needlespotter-longformgen-root .selection-controls {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  #needlespotter-longformgen-root .selection-stats {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  #needlespotter-longformgen-root .selection-header {
+    padding: 12px;
+  }
+  
+  #needlespotter-longformgen-root .selection-controls {
+    flex-direction: column;
+  }
+  
+  #needlespotter-longformgen-root .control-button {
+    width: 100%;
+  }
+}

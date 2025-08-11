@@ -1,0 +1,159 @@
+/* Topic Card Component Styles */
+#needlespotter-longformgen-root .topic-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease;
+}
+
+#needlespotter-longformgen-root .topic-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#needlespotter-longformgen-root .topic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+#needlespotter-longformgen-root .topic-number {
+  background: #007cba;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+#needlespotter-longformgen-root .topic-actions {
+  display: flex;
+  gap: 8px;
+}
+
+#needlespotter-longformgen-root .action-button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+#needlespotter-longformgen-root .action-button:hover {
+  background: #f8f9fa;
+}
+
+#needlespotter-longformgen-root .action-button.edit-button:hover {
+  background: #e3f2fd;
+}
+
+#needlespotter-longformgen-root .action-button.delete-button:hover {
+  background: #ffebee;
+}
+
+#needlespotter-longformgen-root .action-button.save-button:hover {
+  background: #e8f5e8;
+}
+
+#needlespotter-longformgen-root .action-button.cancel-button:hover {
+  background: #ffebee;
+}
+
+#needlespotter-longformgen-root .topic-content {
+  min-height: 120px;
+}
+
+#needlespotter-longformgen-root .topic-title {
+  margin: 0 0 12px 0;
+  color: #333;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+#needlespotter-longformgen-root .topic-description {
+  margin: 0;
+  color: #555;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Edit Form Styles */
+#needlespotter-longformgen-root .edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+#needlespotter-longformgen-root .edit-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#needlespotter-longformgen-root .edit-form label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+}
+
+#needlespotter-longformgen-root .topic-name-input,
+#needlespotter-longformgen-root .topic-description-input {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
+}
+
+#needlespotter-longformgen-root .topic-name-input:focus,
+#needlespotter-longformgen-root .topic-description-input:focus {
+  outline: none;
+  border-color: #007cba;
+  box-shadow: 0 0 0 2px rgba(0, 124, 186, 0.1);
+}
+
+#needlespotter-longformgen-root .topic-description-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #needlespotter-longformgen-root .topic-card {
+    padding: 15px;
+  }
+  
+  #needlespotter-longformgen-root .topic-header {
+    margin-bottom: 12px;
+  }
+  
+  #needlespotter-longformgen-root .topic-title {
+    font-size: 1rem;
+  }
+  
+  #needlespotter-longformgen-root .topic-description {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #needlespotter-longformgen-root .topic-card {
+    padding: 12px;
+  }
+  
+  #needlespotter-longformgen-root .topic-actions {
+    gap: 6px;
+  }
+  
+  #needlespotter-longformgen-root .action-button {
+    font-size: 1rem;
+  }
+}

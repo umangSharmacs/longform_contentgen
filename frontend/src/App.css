@@ -1,0 +1,246 @@
+/* NeedleSpotter LongformGen Shortcode Styles */
+#needlespotter-longformgen-root {
+  font-family: inherit;
+  line-height: 1.6;
+  color: inherit;
+}
+
+#needlespotter-longformgen-root .app {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#needlespotter-longformgen-root .app.search-phase {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+#needlespotter-longformgen-root .selection-app {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 15px;
+}
+
+#needlespotter-longformgen-root .search-layout {
+  display: flex;
+  gap: 20px;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+#needlespotter-longformgen-root .left-panel {
+  flex: 0 0 60%;
+  min-height: 400px;
+}
+
+#needlespotter-longformgen-root .right-panel {
+  flex: 0 0 40%;
+}
+
+#needlespotter-longformgen-root .app-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+#needlespotter-longformgen-root .app-header h1 {
+  font-size: 1.5rem;
+  margin: 0 0 8px 0;
+  color: #333;
+  font-weight: 600;
+}
+
+#needlespotter-longformgen-root .app-header p {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+}
+
+#needlespotter-longformgen-root .form-container {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 15px;
+}
+
+#needlespotter-longformgen-root .form-container h2 {
+  margin: 0 0 15px 0;
+  font-size: 1.2rem;
+  color: #333;
+  font-weight: 600;
+  text-align: center;
+}
+
+#needlespotter-longformgen-root .form-group {
+  margin-bottom: 15px;
+}
+
+#needlespotter-longformgen-root .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #333;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+#needlespotter-longformgen-root .form-input,
+#needlespotter-longformgen-root .form-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+  background: white;
+  color: #333;
+  font-family: inherit;
+}
+
+#needlespotter-longformgen-root .form-input:focus,
+#needlespotter-longformgen-root .form-select:focus {
+  outline: none;
+  border-color: #007cba;
+  box-shadow: 0 0 0 1px #007cba;
+}
+
+/* Date input styling */
+#needlespotter-longformgen-root input[type="date"] {
+  cursor: pointer;
+  padding-right: 30px;
+}
+
+#needlespotter-longformgen-root input[type="date"]::-webkit-calendar-picker-indicator {
+  background: #333 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E") no-repeat center;
+  background-size: 12px;
+  color: #333;
+  cursor: pointer;
+  height: 16px;
+  width: 16px;
+  filter: none;
+  opacity: 1;
+  border-radius: 2px;
+  padding: 0;
+  border: none;
+  position: relative;
+  top: 0;
+  right: 0;
+  transform: none;
+}
+
+#needlespotter-longformgen-root .form-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  padding-right: 30px;
+}
+
+#needlespotter-longformgen-root .form-group small {
+  display: block;
+  margin-top: 4px;
+  color: #6c757d;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+#needlespotter-longformgen-root .fetch-button {
+  width: 100%;
+  padding: 10px 16px;
+  background: #007cba;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+#needlespotter-longformgen-root .fetch-button:hover:not(:disabled) {
+  background: #005a87;
+}
+
+#needlespotter-longformgen-root .fetch-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#needlespotter-longformgen-root .result-container {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+#needlespotter-longformgen-root .result-container h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.1rem;
+  color: #333;
+  font-weight: 600;
+}
+
+#needlespotter-longformgen-root .error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 4px;
+  border-left: 4px solid #dc3545;
+  font-size: 0.9rem;
+}
+
+#needlespotter-longformgen-root .result-data {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: #333;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  font-family: 'Courier New', monospace;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #needlespotter-longformgen-root .app {
+    margin: 15px 0;
+    padding: 15px;
+  }
+  
+  #needlespotter-longformgen-root .form-container {
+    padding: 15px;
+  }
+  
+  #needlespotter-longformgen-root .app-header h1 {
+    font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #needlespotter-longformgen-root .app {
+    padding: 12px;
+  }
+  
+  #needlespotter-longformgen-root .form-container {
+    padding: 12px;
+  }
+  
+  #needlespotter-longformgen-root .app-header h1 {
+    font-size: 1.2rem;
+  }
+}

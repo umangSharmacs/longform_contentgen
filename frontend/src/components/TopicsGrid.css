@@ -1,0 +1,44 @@
+/* Topics Grid Component Styles */
+#needlespotter-longformgen-root .topics-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+#needlespotter-longformgen-root .topics-grid .topic-card {
+  flex: 1 1 calc(50% - 10px);
+  min-width: 300px;
+}
+
+#needlespotter-longformgen-root .topics-empty {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+#needlespotter-longformgen-root .topics-empty p {
+  margin: 0;
+  color: #666;
+  font-size: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #needlespotter-longformgen-root .topics-grid {
+    gap: 15px;
+  }
+  
+  #needlespotter-longformgen-root .topics-grid .topic-card {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  #needlespotter-longformgen-root .topics-grid {
+    gap: 12px;
+  }
+}

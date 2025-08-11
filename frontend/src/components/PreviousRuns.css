@@ -1,0 +1,131 @@
+.previous-runs {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  height: 100%;
+  overflow-y: auto;
+}
+
+.previous-runs h3 {
+  margin: 0 0 15px 0;
+  color: #495057;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.runs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.run-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.run-item:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+}
+
+.run-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.run-id {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 600;
+}
+
+.run-date {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.run-status {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #28a745;
+}
+
+.run-status.failed {
+  color: #dc3545;
+}
+
+.run-status.processing {
+  color: #ffc107;
+}
+
+.run-phases {
+  font-size: 11px;
+  color: #495057;
+  font-style: italic;
+}
+
+.load-run-button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.load-run-button:hover {
+  background: #0056b3;
+}
+
+.previous-runs-loading {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.previous-runs-error {
+  text-align: center;
+  padding: 20px;
+  color: #dc3545;
+}
+
+.previous-runs-error p {
+  margin: 0 0 10px 0;
+}
+
+.retry-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.retry-button:hover {
+  background: #c82333;
+}
+
+.previous-runs-empty {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-style: italic;
+}
