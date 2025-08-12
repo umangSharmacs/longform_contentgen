@@ -47,14 +47,14 @@ function TopicsPhase({ topics, runId, onBack, onProceed }) {
         return
       }
 
-      // Send topics to WordPress backend
+      // Save topics to WordPress backend (no n8n request)
       const response = await fetch('/wp-admin/admin-ajax.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          action: 'deep-research-longformgen',
+          action: 'save-topics-longformgen',
           nonce: nonce,
           run_id: runId || '',
           topics: JSON.stringify(currentTopics)
@@ -64,17 +64,17 @@ function TopicsPhase({ topics, runId, onBack, onProceed }) {
       const data = await response.json()
       
       if (data.success) {
-        console.log('Topics sent successfully:', data.data)
+        console.log('Topics saved successfully:', data.data)
         // Call the onProceed callback to move to next phase
         if (onProceed) {
           onProceed(currentTopics, data.data)
         }
       } else {
-        alert('Failed to send topics: ' + (data.data || 'Unknown error'))
+        alert('Failed to save topics: ' + (data.data || 'Unknown error'))
       }
     } catch (error) {
-      console.error('Error sending topics:', error)
-      alert('Failed to send topics. Please try again.')
+      console.error('Error saving topics:', error)
+      alert('Failed to save topics. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
