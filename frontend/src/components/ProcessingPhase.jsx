@@ -6,12 +6,26 @@ import './ProcessingPhase.css'
 function ProcessingPhase({ runId, onComplete, onBack }) {
   const [processingStatus, setProcessingStatus] = useState('initializing')
   const [isInitialized, setIsInitialized] = useState(false)
+  const [researchResults, setResearchResults] = useState(null)
+  const [topics, setTopics] = useState([])
+  const [isDeepResearchRunning, setIsDeepResearchRunning] = useState(false)
   const chatContainerRef = useRef(null)
   const chatInstanceRef = useRef(null)
+  const pollingIntervalRef = useRef(null)
 
   useEffect(() => {
     // Initialize the processing phase
     initializeProcessing()
+    
+    // Start polling for research results
+    startPollingForResults()
+    
+    // Cleanup polling on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+      }
+    }
   }, [])
 
   const initializeProcessing = async () => {
@@ -23,14 +37,38 @@ function ProcessingPhase({ runId, onComplete, onBack }) {
         throw new Error('Security token not available')
       }
 
-      // Start processing phase
+      // Load topics first
+      await loadTopics()
+
+      // Initialize processing phase without sending n8n request
+      console.log('Processing phase initialized successfully')
+      setProcessingStatus('ready')
+      setIsInitialized(true)
+      
+      // Initialize n8n chat immediately - it will handle its own toggle
+      setTimeout(async () => {
+        await initializeChat()
+      }, 100)
+    } catch (error) {
+      console.error('Processing initialization error:', error)
+      setProcessingStatus('error')
+    }
+  }
+
+  const loadTopics = async () => {
+    try {
+      const nonce = window.nslfg_ajax?.nonce
+      if (!nonce) {
+        throw new Error('Security token not available')
+      }
+
       const response = await fetch('/wp-admin/admin-ajax.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          action: 'start-processing-longformgen',
+          action: 'get-run-context',
           run_id: runId,
           nonce: nonce
         })
@@ -39,20 +77,14 @@ function ProcessingPhase({ runId, onComplete, onBack }) {
       const data = await response.json()
       
       if (data.success) {
-        console.log('Chat initializing...')
-        setProcessingStatus('ready')
-        setIsInitialized(true)
-        
-        // Initialize n8n chat after a short delay to ensure DOM is ready
-        setTimeout(async () => {
-          await initializeChat()
-        }, 100)
+        const topicsData = data.data.topics || []
+        setTopics(topicsData)
+        console.log('Loaded topics:', topicsData)
       } else {
-        throw new Error(data.data || 'Failed to initialize processing')
+        console.error('Failed to load topics:', data.data)
       }
     } catch (error) {
-      console.error('Processing initialization error:', error)
-      setProcessingStatus('error')
+      console.error('Error loading topics:', error)
     }
   }
 
@@ -91,7 +123,7 @@ function ProcessingPhase({ runId, onComplete, onBack }) {
 
       console.log('Got chat webhook URL:', webhookUrl)
 
-      // Now get the selected items and topics data
+      // Get the selected items data (topics are already loaded)
       const contextResponse = await fetch('/wp-admin/admin-ajax.php', {
         method: 'POST',
         headers: {
@@ -106,12 +138,10 @@ function ProcessingPhase({ runId, onComplete, onBack }) {
 
       const contextData = await contextResponse.json()
       let selectedItems = []
-      let topics = []
       
       if (contextData.success) {
         selectedItems = contextData.data.selected_items || []
-        topics = contextData.data.topics || []
-        console.log('Got run context:', { selectedItems, topics })
+        console.log('Got selected items:', selectedItems)
       }
       
       // Initialize the n8n chat with the fetched webhook URL
@@ -124,7 +154,7 @@ function ProcessingPhase({ runId, onComplete, onBack }) {
           }
         },
         target: chatContainerRef.current,
-        mode: 'fullscreen',
+        mode: 'window',
         showWelcomeScreen: false,
         loadPreviousSession: false,
         initialMessages: [
@@ -157,6 +187,123 @@ function ProcessingPhase({ runId, onComplete, onBack }) {
       setProcessingStatus('error')
     }
   }
+
+  const startPollingForResults = () => {
+    // Poll every 10 seconds for research results
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const nonce = window.nslfg_ajax?.nonce
+        if (!nonce) return
+
+        const response = await fetch('/wp-admin/admin-ajax.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            action: 'check-research-status',
+            run_id: runId,
+            nonce: nonce
+          })
+        })
+
+        const data = await response.json()
+        
+        if (data.success && data.data.status === 'completed') {
+          // Research is ready!
+          setResearchResults(data.data.research_results)
+          setProcessingStatus('completed')
+          setIsDeepResearchRunning(false)
+          
+          // Stop polling
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current)
+          }
+          
+          // Call onComplete with results
+          if (onComplete) {
+            onComplete(data.data)
+          }
+        }
+      } catch (error) {
+        console.error('Error checking research status:', error)
+      }
+    }, 10000) // Check every 10 seconds
+  }
+
+  const startDeepResearch = async () => {
+    if (isDeepResearchRunning) return
+
+    setIsDeepResearchRunning(true)
+    
+    try {
+      const nonce = window.nslfg_ajax?.nonce
+      if (!nonce) {
+        throw new Error('Security token not available')
+      }
+
+      // Get all previous phases data
+      const response = await fetch('/wp-admin/admin-ajax.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'get-run-context',
+          run_id: runId,
+          nonce: nonce
+        })
+      })
+
+      const contextData = await response.json()
+      
+      if (!contextData.success) {
+        throw new Error('Failed to get run context')
+      }
+
+      // Prepare deep research data
+      const deepResearchData = {
+        action: 'deepresearch-longformgen',
+        run_id: runId,
+        timestamp: new Date().toISOString(),
+        source: 'wordpress_frontend',
+        previous_phases: {
+          selected_items: contextData.data.selected_items || [],
+          topics: contextData.data.topics || [],
+          search_results: contextData.data.search_results || []
+        }
+      }
+
+      // Send to deep research webhook
+      const webhookResponse = await fetch('/wp-admin/admin-ajax.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'start-deep-research',
+          run_id: runId,
+          nonce: nonce,
+          deep_research_data: JSON.stringify(deepResearchData)
+        })
+      })
+
+      const data = await webhookResponse.json()
+      
+      if (data.success) {
+        console.log('Deep research started successfully')
+        // Start polling for results
+        startPollingForResults()
+      } else {
+        throw new Error(data.data || 'Failed to start deep research')
+      }
+    } catch (error) {
+      console.error('Error starting deep research:', error)
+      setIsDeepResearchRunning(false)
+    }
+  }
+
+  // n8n will handle the chat toggle functionality
 
   const getStatusText = () => {
     switch (processingStatus) {
@@ -214,10 +361,100 @@ function ProcessingPhase({ runId, onComplete, onBack }) {
       </div>
 
       {isInitialized && (
-        <div className="n8n-chat-container">
-          <div ref={chatContainerRef} id="n8n-chat-container"></div>
+        <div className="processing-content">
+          {/* Left Column - Topics */}
+          <div className="topics-panel">
+            <h3>Selected Topics</h3>
+            <div className="topics-list">
+              {topics.length > 0 ? (
+                topics.map((topic, index) => (
+                  <div key={index} className="topic-item">
+                    <h4>{topic.topic_name}</h4>
+                    <p>{topic.description}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="no-topics">No topics available</p>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column - Deep Research Document */}
+          <div className="research-panel">
+            <div className="research-controls">
+              <h3>Deep Research</h3>
+              <button
+                onClick={startDeepResearch}
+                disabled={isDeepResearchRunning}
+                className={`deep-research-button ${isDeepResearchRunning ? 'running' : ''}`}
+              >
+                {isDeepResearchRunning ? 'Research Running...' : 'Start Deep Research'}
+              </button>
+              
+              {researchResults && (
+                <div className="research-document">
+                  <div className="document-header">
+                    <h4>Research Document</h4>
+                    <div className="document-meta">
+                      <span className="document-date">{new Date().toLocaleDateString()}</span>
+                      <span className="document-status">Completed</span>
+                    </div>
+                  </div>
+                  <div className="document-content">
+                    {Array.isArray(researchResults) ? (
+                      researchResults.map((result, index) => (
+                        <div key={index} className="document-section">
+                          {result.title && <h5 className="section-title">{result.title}</h5>}
+                          {result.summary && <p className="section-summary">{result.summary}</p>}
+                          {result.key_points && (
+                            <div className="key-points">
+                              <h6>Key Points:</h6>
+                              <ul>
+                                {result.key_points.map((point, pointIndex) => (
+                                  <li key={pointIndex}>{point}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {result.details && <p className="section-details">{result.details}</p>}
+                          {result.sources && (
+                            <div className="sources">
+                              <h6>Sources:</h6>
+                              <ul>
+                                {result.sources.map((source, sourceIndex) => (
+                                  <li key={sourceIndex}>
+                                    <a href={source.url} target="_blank" rel="noopener noreferrer">
+                                      {source.title || source.url}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {!result.title && !result.summary && !result.key_points && !result.details && !result.sources && (
+                            <div className="raw-data">
+                              <pre>{JSON.stringify(result, null, 2)}</pre>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="document-section">
+                        <div className="raw-data">
+                          <pre>{JSON.stringify(researchResults, null, 2)}</pre>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
+
+      {/* n8n Chat Container - positioned outside the processing content */}
+      <div ref={chatContainerRef} id="n8n-chat-container"></div>
 
       {!isInitialized && processingStatus === 'initializing' && (
         <div className="loading-container">

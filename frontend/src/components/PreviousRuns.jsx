@@ -62,6 +62,35 @@ const PreviousRuns = ({ onLoadRun }) => {
     }
   };
 
+  const handleDeleteRun = async (runId) => {
+    if (!window.confirm('Are you sure you want to delete this run? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('action', 'delete-run-longformgen');
+      formData.append('nonce', window.nslfg_ajax.nonce);
+      formData.append('run_id', runId);
+
+      const response = await fetch(window.nslfg_ajax.ajax_url, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Remove the deleted run from the list
+        setRuns(prevRuns => prevRuns.filter(run => run.run_id !== runId));
+      } else {
+        setError(data.data || 'Failed to delete run');
+      }
+    } catch (err) {
+      setError('Network error: ' + err.message);
+    }
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
@@ -105,12 +134,20 @@ const PreviousRuns = ({ onLoadRun }) => {
               <div className="run-status">{run.status}</div>
               <div className="run-phases">{getPhaseStatus(run)}</div>
             </div>
-            <button 
-              onClick={() => handleLoadRun(run.run_id)}
-              className="load-run-button"
-            >
-              Load Run
-            </button>
+            <div className="run-actions">
+              <button 
+                onClick={() => handleLoadRun(run.run_id)}
+                className="load-run-button"
+              >
+                Load Run
+              </button>
+              <button 
+                onClick={() => handleDeleteRun(run.run_id)}
+                className="delete-run-button"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>
