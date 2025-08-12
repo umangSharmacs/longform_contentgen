@@ -2,6 +2,7 @@ import { useState } from 'react'
 import ResultsGrid from './components/ResultsGrid'
 import SelectionPhase from './components/SelectionPhase'
 import TopicsPhase from './components/TopicsPhase'
+import ProcessingPhase from './components/ProcessingPhase'
 import PhaseFlow from './components/PhaseFlow'
 import PreviousRuns from './components/PreviousRuns'
 import NewRunForm from './components/NewRunForm'
@@ -108,8 +109,17 @@ function App() {
   const handleTopicsComplete = (finalTopics, responseData) => {
     console.log('Topics finalized:', finalTopics)
     console.log('Response data:', responseData)
-    // TODO: Move to processing phase
     setCurrentPhase('processing')
+  }
+
+  const handleProcessingComplete = (processingData) => {
+    console.log('Processing completed:', processingData)
+    // TODO: Move to review phase or show results
+    setCurrentPhase('review')
+  }
+
+  const handleBackToTopics = () => {
+    setCurrentPhase('topics')
   }
 
   const handleLoadPreviousRun = (runData) => {
@@ -145,6 +155,28 @@ function App() {
       const topicsData = JSON.parse(runData.topics_phase.topics)
       setTopics(topicsData)
     }
+  }
+
+  // Render processing phase
+  if (currentPhase === 'processing') {
+    return (
+      <div className="app processing-app">
+        <PhaseFlow currentPhase={currentPhase} />
+        
+        <header className="app-header">
+          <h1>NeedleSpotter LongformGen</h1>
+          <p>AI Agent Chat - Generate Content</p>
+        </header>
+
+        <main className="app-main">
+          <ProcessingPhase 
+            runId={currentRunId}
+            onComplete={handleProcessingComplete}
+            onBack={handleBackToTopics}
+          />
+        </main>
+      </div>
+    )
   }
 
   // Render topics phase
