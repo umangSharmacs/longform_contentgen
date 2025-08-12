@@ -239,66 +239,36 @@ function ProcessingPhase({ runId, onComplete, onBack }) {
     try {
       const nonce = window.nslfg_ajax?.nonce
       if (!nonce) {
-        throw new Error('Security token not available')
+        alert('Security token not available. Please refresh the page.')
+        return
       }
 
-      // Get all previous phases data
+      // Prepare form data
+      const formData = new FormData()
+      formData.append('action', 'deepresearch-longformgen')
+      formData.append('nonce', nonce)
+      formData.append('run_id', runId)
+      formData.append('topics', JSON.stringify(topics))
+
+      // Send request to WordPress backend
       const response = await fetch('/wp-admin/admin-ajax.php', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          action: 'get-run-context',
-          run_id: runId,
-          nonce: nonce
-        })
+        body: formData
       })
-
-      const contextData = await response.json()
       
-      if (!contextData.success) {
-        throw new Error('Failed to get run context')
-      }
-
-      // Prepare deep research data
-      const deepResearchData = {
-        action: 'deepresearch-longformgen',
-        run_id: runId,
-        timestamp: new Date().toISOString(),
-        source: 'wordpress_frontend',
-        previous_phases: {
-          selected_items: contextData.data.selected_items || [],
-          topics: contextData.data.topics || [],
-          search_results: contextData.data.search_results || []
-        }
-      }
-
-      // Send to deep research webhook
-      const webhookResponse = await fetch('/wp-admin/admin-ajax.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          action: 'start-deep-research',
-          run_id: runId,
-          nonce: nonce,
-          deep_research_data: JSON.stringify(deepResearchData)
-        })
-      })
-
-      const data = await webhookResponse.json()
+      const data = await response.json()
       
       if (data.success) {
-        console.log('Deep research started successfully')
+        console.log('Deep research started successfully:', data.data)
         // Start polling for results
         startPollingForResults()
       } else {
-        throw new Error(data.data || 'Failed to start deep research')
+        alert('Failed to start deep research: ' + (data.data || 'Unknown error'))
       }
     } catch (error) {
       console.error('Error starting deep research:', error)
+      alert('Failed to start deep research. Please try again.')
+    } finally {
       setIsDeepResearchRunning(false)
     }
   }
