@@ -85,10 +85,38 @@ function App() {
     setTopics([])
   }
 
-  const handleSelectionComplete = () => {
-    // Simulate getting topics from n8n (this would normally come from the backend)
-    // For now, we'll use mock data
-    const mockTopics = [
+  const handleSelectionComplete = (selectedItems, topics = []) => {
+    // Use topics from n8n response if available, otherwise fall back to mock data
+    if (topics && topics.length > 0) {
+      console.log('Using topics from n8n:', topics)
+      
+      // Validate topics structure
+      const validTopics = topics.filter(topic => 
+        topic && 
+        typeof topic === 'object' && 
+        (topic.topic_name || topic.topic) && 
+        topic.description
+      ).map(topic => ({
+        topic_name: topic.topic_name || topic.topic,
+        description: topic.description
+      }))
+      
+      if (validTopics.length > 0) {
+        console.log('Validated topics:', validTopics)
+        setTopics(validTopics)
+      } else {
+        console.log('No valid topics found, using mock data')
+        setTopics(getMockTopics())
+      }
+        } else {
+      console.log('No topics from n8n, using mock data')
+      setTopics(getMockTopics())
+    }
+    setCurrentPhase('topics')
+  }
+
+  const getMockTopics = () => {
+    return [
       {
         topic_name: "Evolving Standards in Cancer Treatment and Prevention",
         description: "Recent research underscores ongoing advancements in both cancer therapeutics and preventive approaches, highlighting the impact of targeted therapies like ibrutinib as well as the importance of evidence-based screening and nutrition interventions to improve patient outcomes and survivorship."
@@ -102,8 +130,6 @@ function App() {
         description: "The push for rigorous nutrition and intervention research during active treatment signals a broader movement to fill evidence gaps and standardize recommendations, promoting more consistent, high-quality care throughout the cancer continuum."
       }
     ]
-    setTopics(mockTopics)
-    setCurrentPhase('topics')
   }
 
   const handleTopicsComplete = (finalTopics, responseData) => {
@@ -225,7 +251,7 @@ function App() {
     )
   }
 
-    // Render search phase
+  // Render search phase
   return (
     <div className="app search-phase">
       <PhaseFlow currentPhase={currentPhase} />

@@ -77,11 +77,38 @@ function SelectionPhase({ results, runId, onBack, onProceed }) {
       
       const data = await response.json()
       
-      if (data.success) {
-        console.log('Selected items and files sent successfully:', data.data)
-        // Call the onProceed callback to move to next phase
+              if (data.success) {
+          console.log('Selected items and files sent successfully:', data.data)
+          
+          // Extract topics from the response if available
+          const responseData = data.data
+          console.log('=== DEBUGGING TOPICS EXTRACTION ===')
+          console.log('Full response data:', responseData)
+          console.log('responseData.output:', responseData.output)
+          console.log('responseData.output?.topics:', responseData.output?.topics)
+          
+          // Try different ways to extract topics
+          let topics = []
+          if (responseData.topics) {
+            topics = responseData.topics
+            console.log('Found topics in responseData.topics')
+          } else if (responseData.output && responseData.output.topics) {
+            topics = responseData.output.topics
+            console.log('Found topics in responseData.output.topics')
+          } else if (responseData[0] && responseData[0].output && responseData[0].output.topics) {
+            topics = responseData[0].output.topics
+            console.log('Found topics in responseData[0].output.topics')
+          } else {
+            console.log('No topics found in any expected location')
+          }
+          
+          console.log('Final topics extracted:', topics)
+          console.log('Topics type:', typeof topics)
+          console.log('Topics length:', topics.length)
+        
+        // Call the onProceed callback with topics
         if (onProceed) {
-          onProceed(selectedItems)
+          onProceed(selectedItems, topics)
         }
       } else {
         alert('Failed to send items: ' + (data.data || 'Unknown error'))

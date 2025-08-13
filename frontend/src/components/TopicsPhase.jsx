@@ -61,6 +61,7 @@ function TopicsPhase({ topics, runId, onBack, onProceed }) {
         })
       })
       
+      console.log('Body:',response.body)
       const data = await response.json()
       
       if (data.success) {
