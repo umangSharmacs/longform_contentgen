@@ -1,75 +1,74 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { createChat } from '@n8n/chat'
-import '@n8n/chat/style.css'
+import React, { useState, useEffect } from 'react'
 import './ProcessingPhase.css'
 
-function ProcessingPhase({ runId, onBack }) {
-  const [processingStatus, setProcessingStatus] = useState('initializing')
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [researchResults, setResearchResults] = useState(null)
+function ProcessingPhase({ runId, onBack, onComplete }) {
+  const [researchData, setResearchData] = useState(null)
+  const [editedResearch, setEditedResearch] = useState(null)
+  const [newsletterData, setNewsletterData] = useState(null)
+  const [qcData, setQcData] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
   const [topics, setTopics] = useState([])
-  const [isDeepResearchRunning, setIsDeepResearchRunning] = useState(false)
+  
+  // Collapsible section states
   const [expandedSections, setExpandedSections] = useState({
-    topics: true,
-    research: false
+    deepResearch: true,
+    editResearch: true,
+    newsletterWriting: true,
+    qualityControl: true
   })
-  const [expandedResearchSections, setExpandedResearchSections] = useState({
-    original: false,
-    reworked: false,
-    improved: false,
-    reasons: false,
-    'reasons-legacy': false
+
+  // Processing status states
+  const [processingStatus, setProcessingStatus] = useState({
+    deepResearch: 'pending', // pending, running, completed, failed
+    editResearch: 'pending',
+    newsletterWriting: 'pending',
+    qualityControl: 'pending'
   })
-  const [editingSections, setEditingSections] = useState({
-    original: false,
-    reworked: false,
-    improved: false
-  })
-  const [editedContent, setEditedContent] = useState({
-    original: '',
-    reworked: '',
-    improved: ''
-  })
-  const chatContainerRef = useRef(null)
-  const chatInstanceRef = useRef(null)
-  const eventSourceRef = useRef(null)
 
   useEffect(() => {
-    // Initialize the processing phase
     initializeProcessing()
-    
-    // Cleanup on unmount
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-      }
-    }
   }, [])
 
   const initializeProcessing = async () => {
-    setProcessingStatus('initializing')
-    
+    try {
+      await loadTopics()
+      // Don't automatically start deep research - let user initiate it
+    } catch (error) {
+      console.error('Processing initialization error:', error)
+      setError('Failed to initialize processing')
+    }
+  }
+
+  const updateDatabaseSchema = async () => {
     try {
       const nonce = window.nslfg_ajax?.nonce
       if (!nonce) {
         throw new Error('Security token not available')
       }
 
-      // Load topics first
-      await loadTopics()
+      const response = await fetch('/wp-admin/admin-ajax.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'update-database-schema',
+          nonce: nonce
+        })
+      })
 
-      // Initialize processing phase without sending n8n request
-      console.log('Processing phase initialized successfully')
-      setProcessingStatus('ready')
-      setIsInitialized(true)
+      const data = await response.json()
       
-      // Initialize n8n chat immediately - it will handle its own toggle
-      setTimeout(async () => {
-        await initializeChat()
-      }, 100)
+      if (data.success) {
+        console.log('Database schema updated successfully')
+        setError(null)
+      } else {
+        throw new Error(data.data || 'Failed to update database schema')
+      }
     } catch (error) {
-      console.error('Processing initialization error:', error)
-      setProcessingStatus('error')
+      console.error('Error updating database schema:', error)
+      setError('Failed to update database schema: ' + error.message)
     }
   }
 
@@ -98,7 +97,6 @@ function ProcessingPhase({ runId, onBack }) {
         const topicsData = data.data.topics || []
         setTopics(topicsData)
         console.log('Loaded topics:', topicsData)
-        console.log('Full response data:', data.data)
       } else {
         console.error('Failed to load topics:', data.data)
       }
@@ -107,11 +105,12 @@ function ProcessingPhase({ runId, onBack }) {
     }
   }
 
-  const initializeChat = async () => {
-    if (!chatContainerRef.current) return
-
+  const startDeepResearch = async () => {
+    setIsLoading(true)
+    setError(null)
+    setProcessingStatus(prev => ({ ...prev, deepResearch: 'running' }))
+    
     try {
-      // First, get the chat webhook URL from WordPress
       const nonce = window.nslfg_ajax?.nonce
       if (!nonce) {
         throw new Error('Security token not available')
@@ -123,97 +122,44 @@ function ProcessingPhase({ runId, onBack }) {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          action: 'get-chat-webhook-url',
+          action: 'deepresearch-longformgen',
+          run_id: runId,
+          topics: JSON.stringify(topics),
           nonce: nonce
         })
       })
 
       const data = await response.json()
       
-      if (!data.success) {
-        throw new Error(data.data || 'Failed to get chat webhook URL')
+      if (data.success) {
+        console.log('Deep research started successfully')
+        // Start polling for research completion
+        pollForResearchCompletion()
+      } else {
+        throw new Error(data.data || 'Failed to start deep research')
       }
-
-      const webhookUrl = data.data.webhook_url
-      
-      if (!webhookUrl) {
-        throw new Error('Chat webhook URL not configured')
-      }
-
-      console.log('Got chat webhook URL:', webhookUrl)
-
-      // Get the selected items data (topics are already loaded)
-      const contextResponse = await fetch('/wp-admin/admin-ajax.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          action: 'get-run-context',
-          run_id: runId,
-          nonce: nonce
-        })
-      })
-
-      const contextData = await contextResponse.json()
-      let selectedItems = []
-      
-      if (contextData.success) {
-        selectedItems = contextData.data.selected_items || []
-        console.log('Got selected items:', selectedItems)
-      }
-      
-      // Initialize the n8n chat with the fetched webhook URL
-      chatInstanceRef.current = createChat({
-        webhookUrl: webhookUrl,
-        webhookConfig: {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          }
-        },
-        target: chatContainerRef.current,
-        mode: 'window',
-        showWelcomeScreen: false,
-        loadPreviousSession: false,
-        initialMessages: [
-          'Hi there! 👋',
-          'I\'m your AI content generation assistant. I can help you create longform content based on your research data.',
-          'What would you like to work on today?'
-        ],
-        i18n: {
-          en: {
-            title: 'AI Content Generation Assistant',
-            subtitle: 'Generate and refine content based on your research data',
-            footer: '',
-            getStarted: 'New Conversation',
-            inputPlaceholder: 'Type your message to the AI agent...',
-          },
-        },
-        metadata: {
-          run_id: runId,
-          nonce: window.nslfg_ajax?.nonce,
-          action: 'chat-message-longformgen',
-          selected_items: selectedItems,
-          topics: topics
-        },
-        enableStreaming: false,
-      })
-
-      console.log('n8n Chat initialized successfully')
     } catch (error) {
-      console.error('Failed to initialize n8n chat:', error)
-      setProcessingStatus('error')
+      console.error('Error starting deep research:', error)
+      setError('Failed to start deep research: ' + error.message)
+      setProcessingStatus(prev => ({ ...prev, deepResearch: 'failed' }))
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const startSimplePolling = () => {
-    // Simple polling to check for results after n8n webhook updates the database
-    const pollInterval = setInterval(async () => {
+  const pollForResearchCompletion = async () => {
+    const maxAttempts = 60
+    let attempts = 0
+
+    const poll = async () => {
+      if (attempts >= maxAttempts) {
+        setError('Research completion timeout. Please check the status manually.')
+        setProcessingStatus(prev => ({ ...prev, deepResearch: 'failed' }))
+        return
+      }
+
       try {
         const nonce = window.nslfg_ajax?.nonce
-        if (!nonce) return
-
         const response = await fetch('/wp-admin/admin-ajax.php', {
           method: 'POST',
           headers: {
@@ -228,119 +174,41 @@ function ProcessingPhase({ runId, onBack }) {
 
         const data = await response.json()
         
-        if (data.success) {
-          console.log('Checking research status:', data.data)
-          
-          if (data.data.status === 'completed' || (data.data.research_results && data.data.research_results.length > 0)) {
-            // Research is ready!
-            setResearchResults(data.data.research_results || [])
-            setProcessingStatus('completed')
-            setIsDeepResearchRunning(false)
-            
-            // Stop polling
-            clearInterval(pollInterval)
-            
-            // Don't call onComplete - stay in Processing phase to view results
-            // if (onComplete) {
-            //   onComplete(data.data)
-            // }
-          } else if (data.data.status === 'failed') {
-            // Research failed
-            setProcessingStatus('error')
-            setIsDeepResearchRunning(false)
-            
-            // Stop polling
-            clearInterval(pollInterval)
-            
-            alert('Deep research failed. Please try again.')
-          }
-          // If status is still 'processing', continue polling
+        console.log('Research status check response:', data)
+        
+        if (data.success && data.data.research_completed) {
+          console.log('Research completed, moving to editing phase')
+          setResearchData(data.data.research_data)
+          setProcessingStatus(prev => ({ ...prev, deepResearch: 'completed' }))
+          setExpandedSections(prev => ({ ...prev, editResearch: true }))
+          return
+        } else {
+          console.log('Research not completed yet, continuing to poll...')
         }
+
+        attempts++
+        setTimeout(poll, 5000) // Poll every 5 seconds
       } catch (error) {
-        console.error('Error checking research status:', error)
+        console.error('Error polling for research completion:', error)
+        attempts++
+        setTimeout(poll, 5000)
       }
-    }, 5000) // Check every 5 seconds
-
-    // Store interval reference for cleanup
-    eventSourceRef.current = { close: () => clearInterval(pollInterval) }
-  }
-
-  const startDeepResearch = async () => {
-    if (isDeepResearchRunning) return
-
-    setIsDeepResearchRunning(true)
-    
-    try {
-      const nonce = window.nslfg_ajax?.nonce
-      if (!nonce) {
-        alert('Security token not available. Please refresh the page.')
-        return
-      }
-
-      // Prepare form data
-      const formData = new FormData()
-      formData.append('action', 'deepresearch-longformgen')
-      formData.append('nonce', nonce)
-      formData.append('run_id', runId)
-      formData.append('topics', JSON.stringify(topics))
-
-      // Send request to WordPress backend
-      const response = await fetch('/wp-admin/admin-ajax.php', {
-        method: 'POST',
-        body: formData
-      })
-      
-      const data = await response.json()
-      
-      if (data.success) {
-        console.log('Deep research started successfully:', data.data)
-        // Start simple polling to check for results
-        startSimplePolling()
-        // Keep the button in "running" state
-        setIsDeepResearchRunning(true)
-      } else {
-        alert('Failed to start deep research: ' + (data.data || 'Unknown error'))
-        setIsDeepResearchRunning(false)
-      }
-    } catch (error) {
-      console.error('Error starting deep research:', error)
-      alert('Failed to start deep research. Please try again.')
-      setIsDeepResearchRunning(false)
     }
+
+    poll()
   }
 
-  const toggleSection = (sectionName) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [sectionName]: !prev[sectionName]
-    }))
+  const handleResearchEdit = (editedData) => {
+    setEditedResearch(editedData)
+    // Mark edit research as completed when user edits the data
+    setProcessingStatus(prev => ({ ...prev, editResearch: 'completed' }))
   }
 
-  const toggleResearchSection = (sectionName) => {
-    setExpandedResearchSections(prev => ({
-      ...prev,
-      [sectionName]: !prev[sectionName]
-    }))
-  }
-
-  const toggleEditing = (sectionName) => {
-    setEditingSections(prev => ({
-      ...prev,
-      [sectionName]: !prev[sectionName]
-    }))
+  const startNewsletterWriting = async () => {
+    setIsLoading(true)
+    setError(null)
+    setProcessingStatus(prev => ({ ...prev, newsletterWriting: 'running' }))
     
-    // Initialize edited content when starting to edit
-    if (!editingSections[sectionName]) {
-      const currentContent = researchResults?.[0]?.[`deepresearch_${sectionName}`] || 
-                           researchResults?.[0]?.[`deepresearch_${sectionName === 'original' ? 'original' : sectionName === 'reworked' ? 'reworked' : 'improved_text'}`] || ''
-      setEditedContent(prev => ({
-        ...prev,
-        [sectionName]: currentContent
-      }))
-    }
-  }
-
-  const saveEditedContent = async (sectionName) => {
     try {
       const nonce = window.nslfg_ajax?.nonce
       if (!nonce) {
@@ -353,10 +221,9 @@ function ProcessingPhase({ runId, onBack }) {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          action: 'save-edited-research',
+          action: 'longform-newsletter-writing',
           run_id: runId,
-          section: sectionName,
-          content: editedContent[sectionName],
+          research_data: JSON.stringify(editedResearch || researchData),
           nonce: nonce
         })
       })
@@ -364,452 +231,576 @@ function ProcessingPhase({ runId, onBack }) {
       const data = await response.json()
       
       if (data.success) {
-        console.log('Edited content saved successfully')
-        toggleEditing(sectionName)
-        
-        // Update the research results with edited content
-        setResearchResults(prev => {
-          if (prev && prev.length > 0) {
-            const updated = [...prev]
-            const fieldName = sectionName === 'original' ? 'deepresearch_original' : 
-                            sectionName === 'reworked' ? 'deepresearch_reworked' : 'deepresearch_improved_text'
-            updated[0] = { ...updated[0], [fieldName]: editedContent[sectionName] }
-            return updated
-          }
-          return prev
-        })
+        console.log('Newsletter writing started successfully')
+        pollForNewsletterCompletion()
       } else {
-        alert('Failed to save edited content: ' + (data.data || 'Unknown error'))
+        throw new Error(data.data || 'Failed to start newsletter writing')
       }
     } catch (error) {
-      console.error('Error saving edited content:', error)
-      alert('Failed to save edited content. Please try again.')
+      console.error('Error starting newsletter writing:', error)
+      setError('Failed to start newsletter writing: ' + error.message)
+      setProcessingStatus(prev => ({ ...prev, newsletterWriting: 'failed' }))
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const cancelEditing = (sectionName) => {
-    setEditingSections(prev => ({
+  const pollForNewsletterCompletion = async () => {
+    const maxAttempts = 60
+    let attempts = 0
+
+    const poll = async () => {
+      if (attempts >= maxAttempts) {
+        setError('Newsletter completion timeout. Please check the status manually.')
+        setProcessingStatus(prev => ({ ...prev, newsletterWriting: 'failed' }))
+        return
+      }
+
+      try {
+        const nonce = window.nslfg_ajax?.nonce
+        const response = await fetch('/wp-admin/admin-ajax.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            action: 'check-newsletter-status',
+            run_id: runId,
+            nonce: nonce
+          })
+        })
+
+        const data = await response.json()
+        
+        if (data.success && data.data.newsletter_completed) {
+          setNewsletterData(data.data.newsletter_data)
+          setProcessingStatus(prev => ({ ...prev, newsletterWriting: 'completed' }))
+          setExpandedSections(prev => ({ ...prev, qualityControl: true }))
+          return
+        }
+
+        attempts++
+        setTimeout(poll, 5000) // Poll every 5 seconds
+      } catch (error) {
+        console.error('Error polling for newsletter completion:', error)
+        attempts++
+        setTimeout(poll, 5000)
+      }
+    }
+
+    poll()
+  }
+
+  const startQualityControl = async () => {
+    setIsLoading(true)
+    setError(null)
+    setProcessingStatus(prev => ({ ...prev, qualityControl: 'running' }))
+    
+    try {
+      const nonce = window.nslfg_ajax?.nonce
+      if (!nonce) {
+        throw new Error('Security token not available')
+      }
+
+      const response = await fetch('/wp-admin/admin-ajax.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'longform-QC',
+          run_id: runId,
+          newsletter_data: JSON.stringify(newsletterData),
+          nonce: nonce
+        })
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        console.log('Quality control started successfully')
+        pollForQCCompletion()
+      } else {
+        throw new Error(data.data || 'Failed to start quality control')
+      }
+    } catch (error) {
+      console.error('Error starting quality control:', error)
+      setError('Failed to start quality control: ' + error.message)
+      setProcessingStatus(prev => ({ ...prev, qualityControl: 'failed' }))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const pollForQCCompletion = async () => {
+    const maxAttempts = 60
+    let attempts = 0
+
+    const poll = async () => {
+      if (attempts >= maxAttempts) {
+        setError('QC completion timeout. Please check the status manually.')
+        setProcessingStatus(prev => ({ ...prev, qualityControl: 'failed' }))
+        return
+      }
+
+      try {
+        const nonce = window.nslfg_ajax?.nonce
+        const response = await fetch('/wp-admin/admin-ajax.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            action: 'check-qc-status',
+            run_id: runId,
+            nonce: nonce
+          })
+        })
+
+        const data = await response.json()
+        
+        if (data.success && data.data.qc_completed) {
+          setQcData(data.data.qc_data)
+          setProcessingStatus(prev => ({ ...prev, qualityControl: 'completed' }))
+          return
+        }
+
+        attempts++
+        setTimeout(poll, 5000) // Poll every 5 seconds
+      } catch (error) {
+        console.error('Error polling for QC completion:', error)
+        attempts++
+        setTimeout(poll, 5000)
+      }
+    }
+
+    poll()
+  }
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
       ...prev,
-      [sectionName]: false
-    }))
-    // Reset edited content to original
-    const originalContent = researchResults?.[0]?.[`deepresearch_${sectionName}`] || 
-                          researchResults?.[0]?.[`deepresearch_${sectionName === 'original' ? 'original' : sectionName === 'reworked' ? 'reworked' : 'improved_text'}`] || ''
-    setEditedContent(prev => ({
-      ...prev,
-      [sectionName]: originalContent
+      [section]: !prev[section]
     }))
   }
 
-  // n8n will handle the chat toggle functionality
-
-  const getStatusText = () => {
-    switch (processingStatus) {
-      case 'initializing':
-        return 'Initializing AI Agent...'
-      case 'ready':
-        return 'AI Agent Ready'
-      case 'processing':
-        return 'Processing...'
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'WAIT'
+      case 'running':
+        return 'RUN'
       case 'completed':
-        return 'Processing Complete'
-      case 'error':
-        return 'Error Occurred'
+        return 'DONE'
+      case 'failed':
+        return 'FAIL'
       default:
-        return 'Unknown Status'
+        return 'WAIT'
     }
   }
 
-  if (processingStatus === 'error') {
-    return (
-      <div className="processing-phase">
-        <div className="processing-header">
-          <div className="status-indicator">
-            <div className="status-dot error"></div>
-            <span className="status-text">Error Occurred</span>
-          </div>
-          <button 
-            className="back-button"
-            onClick={onBack}
-          >
-            Back to Topics
-          </button>
-        </div>
-        <div className="error-message">
-          <p>Failed to initialize the AI agent. Please try again or contact support.</p>
-        </div>
-      </div>
-    )
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending':
+        return '#6c757d'
+      case 'running':
+        return '#007bff'
+      case 'completed':
+        return '#28a745'
+      case 'failed':
+        return '#dc3545'
+      default:
+        return '#6c757d'
+    }
   }
 
   return (
     <div className="processing-phase">
       <div className="processing-header">
-        <div className="status-indicator">
-          <div className={`status-dot ${processingStatus}`}></div>
-          <span className="status-text">{getStatusText()}</span>
+        <h2>Content Generation Pipeline</h2>
+                 <button onClick={onBack} className="back-button">
+           Back to Topics
+         </button>
+      </div>
+      
+
+
+      {error && (
+        <div className="error-message">
+          <p>{error}</p>
+          <div className="error-actions">
+            <button onClick={() => setError(null)}>Dismiss</button>
+            {error.includes('Database update failed') && (
+              <button onClick={updateDatabaseSchema} className="action-button primary">
+                Fix Database Schema
+              </button>
+            )}
+          </div>
         </div>
-        <button 
-          className="back-button"
-          onClick={onBack}
-          disabled={processingStatus === 'initializing'}
-        >
-          Back to Topics
-        </button>
+      )}
+
+      <div className="processing-content">
+        {/* Deep Research Section */}
+        <div className="collapsible-section">
+          <div 
+            className="section-header"
+            onClick={() => toggleSection('deepResearch')}
+          >
+                         <div className="section-title">
+               <span className="section-icon">RESEARCH</span>
+               <h3>1. Deep Research</h3>
+              <span 
+                className="status-badge"
+                style={{ backgroundColor: getStatusColor(processingStatus.deepResearch) }}
+              >
+                {getStatusIcon(processingStatus.deepResearch)} {processingStatus.deepResearch}
+              </span>
+            </div>
+            <span className={`expand-icon ${expandedSections.deepResearch ? 'expanded' : ''}`}>
+              ▼
+            </span>
+          </div>
+          
+          {expandedSections.deepResearch && (
+            <div className="section-content">
+              {processingStatus.deepResearch === 'pending' && (
+                <div className="step-content">
+                  <p>Deep research will analyze the selected topics and generate comprehensive content.</p>
+                  <button 
+                    onClick={startDeepResearch}
+                    disabled={isLoading}
+                    className="action-button primary"
+                  >
+                    {isLoading ? 'Starting...' : 'Start Deep Research'}
+                  </button>
+                </div>
+              )}
+              
+              {processingStatus.deepResearch === 'running' && (
+                <div className="step-content">
+                  <div className="loading-indicator">
+                    <div className="spinner"></div>
+                    <p>Deep research in progress... This may take several minutes.</p>
+                  </div>
+                </div>
+              )}
+              
+              {processingStatus.deepResearch === 'completed' && (
+                <div className="step-content">
+                                     <div className="success-message">
+                     <p>SUCCESS: Deep research completed successfully!</p>
+                   </div>
+                                     {researchData && (
+                     <div className="research-preview">
+                       <h4>Research Preview:</h4>
+                       <div className="content-preview">
+                         <pre>{JSON.stringify(researchData, null, 2)}</pre>
+                       </div>
+                     </div>
+                   )}
+                   <div className="section-actions">
+                     <button 
+                       onClick={() => setExpandedSections(prev => ({ ...prev, editResearch: true }))}
+                       className="action-button primary"
+                     >
+                       Next: Edit Research
+                     </button>
+                   </div>
+                </div>
+              )}
+              
+              {processingStatus.deepResearch === 'failed' && (
+                <div className="step-content">
+                                     <div className="error-message">
+                     <p>ERROR: Deep research failed. Please try again.</p>
+                   </div>
+                  <button 
+                    onClick={startDeepResearch}
+                    className="action-button primary"
+                  >
+                    Retry Deep Research
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Edit Research Section */}
+        <div className="collapsible-section">
+          <div 
+            className="section-header"
+            onClick={() => toggleSection('editResearch')}
+          >
+                         <div className="section-title">
+               <span className="section-icon">EDIT</span>
+               <h3>2. Edit Research</h3>
+              <span 
+                className="status-badge"
+                style={{ backgroundColor: getStatusColor(processingStatus.editResearch) }}
+              >
+                {getStatusIcon(processingStatus.editResearch)} {processingStatus.editResearch}
+              </span>
+            </div>
+            <span className={`expand-icon ${expandedSections.editResearch ? 'expanded' : ''}`}>
+              ▼
+            </span>
+          </div>
+          
+          {expandedSections.editResearch && (
+            <div className="section-content">
+              {processingStatus.deepResearch === 'completed' ? (
+                <div className="step-content">
+                  <ResearchEditor 
+                    researchData={researchData}
+                    onEdit={handleResearchEdit}
+                    onProceed={startNewsletterWriting}
+                    isLoading={isLoading}
+                  />
+                </div>
+              ) : (
+                <div className="step-content">
+                  <p>Please complete the Deep Research step first.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Newsletter Writing Section */}
+        <div className="collapsible-section">
+          <div 
+            className="section-header"
+            onClick={() => toggleSection('newsletterWriting')}
+          >
+                         <div className="section-title">
+               <span className="section-icon">NEWSLETTER</span>
+               <h3>3. Newsletter Writing</h3>
+              <span 
+                className="status-badge"
+                style={{ backgroundColor: getStatusColor(processingStatus.newsletterWriting) }}
+              >
+                {getStatusIcon(processingStatus.newsletterWriting)} {processingStatus.newsletterWriting}
+              </span>
+            </div>
+            <span className={`expand-icon ${expandedSections.newsletterWriting ? 'expanded' : ''}`}>
+              ▼
+            </span>
+          </div>
+          
+          {expandedSections.newsletterWriting && (
+            <div className="section-content">
+              {processingStatus.newsletterWriting === 'pending' && (
+                <div className="step-content">
+                  <p>Newsletter writing will generate content based on the edited research.</p>
+                  {processingStatus.editResearch === 'completed' && (
+                    <button 
+                      onClick={startNewsletterWriting}
+                      disabled={isLoading}
+                      className="action-button primary"
+                    >
+                      {isLoading ? 'Starting...' : 'Start Newsletter Writing'}
+                    </button>
+                  )}
+                </div>
+              )}
+              
+              {processingStatus.newsletterWriting === 'running' && (
+                <div className="step-content">
+                  <div className="loading-indicator">
+                    <div className="spinner"></div>
+                    <p>Newsletter writing in progress... This may take several minutes.</p>
+                  </div>
+                </div>
+              )}
+              
+              {processingStatus.newsletterWriting === 'completed' && (
+                <div className="step-content">
+                                     <div className="success-message">
+                     <p>SUCCESS: Newsletter writing completed successfully!</p>
+                   </div>
+                                     {newsletterData && (
+                     <div className="newsletter-preview">
+                       <h4>Newsletter Preview:</h4>
+                       <div className="content-preview">
+                         <pre>{JSON.stringify(newsletterData, null, 2)}</pre>
+                       </div>
+                     </div>
+                   )}
+                   <div className="section-actions">
+                     <button 
+                       onClick={() => setExpandedSections(prev => ({ ...prev, qualityControl: true }))}
+                       className="action-button primary"
+                     >
+                       Next: Quality Control
+                     </button>
+                   </div>
+                </div>
+              )}
+              
+              {processingStatus.newsletterWriting === 'failed' && (
+                <div className="step-content">
+                                     <div className="error-message">
+                     <p>ERROR: Newsletter writing failed. Please try again.</p>
+                   </div>
+                  <button 
+                    onClick={startNewsletterWriting}
+                    className="action-button primary"
+                  >
+                    Retry Newsletter Writing
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Quality Control Section */}
+        <div className="collapsible-section">
+          <div 
+            className="section-header"
+            onClick={() => toggleSection('qualityControl')}
+          >
+                         <div className="section-title">
+               <span className="section-icon">QC</span>
+               <h3>4. Quality Control</h3>
+              <span 
+                className="status-badge"
+                style={{ backgroundColor: getStatusColor(processingStatus.qualityControl) }}
+              >
+                {getStatusIcon(processingStatus.qualityControl)} {processingStatus.qualityControl}
+              </span>
+            </div>
+            <span className={`expand-icon ${expandedSections.qualityControl ? 'expanded' : ''}`}>
+              ▼
+            </span>
+          </div>
+          
+          {expandedSections.qualityControl && (
+            <div className="section-content">
+              {processingStatus.qualityControl === 'pending' && (
+                <div className="step-content">
+                  <p>Quality control will review and finalize the newsletter content.</p>
+                  {processingStatus.newsletterWriting === 'completed' && (
+                    <button 
+                      onClick={startQualityControl}
+                      disabled={isLoading}
+                      className="action-button primary"
+                    >
+                      {isLoading ? 'Starting...' : 'Start Quality Control'}
+                    </button>
+                  )}
+                </div>
+              )}
+              
+              {processingStatus.qualityControl === 'running' && (
+                <div className="step-content">
+                  <div className="loading-indicator">
+                    <div className="spinner"></div>
+                    <p>Quality control in progress... This may take several minutes.</p>
+                  </div>
+                </div>
+              )}
+              
+              {processingStatus.qualityControl === 'completed' && (
+                <div className="step-content">
+                                     <div className="success-message">
+                     <p>SUCCESS: Quality control completed successfully!</p>
+                   </div>
+                                     {qcData && (
+                     <div className="qc-preview">
+                       <h4>Final Results:</h4>
+                       <div className="content-preview">
+                         <pre>{JSON.stringify(qcData, null, 2)}</pre>
+                       </div>
+                     </div>
+                   )}
+                   <div className="section-actions">
+                     <button 
+                       onClick={() => onComplete(qcData)}
+                       className="action-button primary"
+                     >
+                       Complete: View Final Results
+                     </button>
+                   </div>
+                </div>
+              )}
+              
+              {processingStatus.qualityControl === 'failed' && (
+                <div className="step-content">
+                                     <div className="error-message">
+                     <p>ERROR: Quality control failed. Please try again.</p>
+                   </div>
+                  <button 
+                    onClick={startQualityControl}
+                    className="action-button primary"
+                  >
+                    Retry Quality Control
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Research Editor Component
+function ResearchEditor({ researchData, onEdit, onProceed, isLoading }) {
+  const [editedData, setEditedData] = useState(researchData || {})
+
+  useEffect(() => {
+    if (researchData) {
+      setEditedData(researchData)
+    }
+  }, [researchData])
+
+  const handleEdit = (field, value) => {
+    const newData = {
+      ...editedData,
+      [field]: value
+    }
+    setEditedData(newData)
+    onEdit(newData)
+  }
+
+  const handleProceed = () => {
+    onEdit(editedData)
+    onProceed()
+  }
+
+  if (!researchData) {
+    return <div>No research data available</div>
+  }
+
+  return (
+    <div className="research-editor">
+      <div className="editor-section">
+        <h4>Deep Research Content</h4>
+        <textarea
+          value={editedData.deepresearch_original || ''}
+          onChange={(e) => handleEdit('deepresearch_original', e.target.value)}
+          placeholder="Deep research content from n8n..."
+          rows={12}
+          className="edit-textarea"
+        />
       </div>
 
-      {isInitialized && (
-        <div className="processing-content">
-          {/* Collapsible Topics Section */}
-          <div className="collapsible-section">
-            <div 
-              className="section-header"
-              onClick={() => toggleSection('topics')}
-            >
-              <div className="section-title">
-                <span className="section-icon">📋</span>
-                <h3>Selected Topics</h3>
-                <span className="topic-count">({topics.length} topics)</span>
-              </div>
-              <div className={`expand-icon ${expandedSections.topics ? 'expanded' : ''}`}>
-                ▼
-              </div>
-            </div>
-            
-            {expandedSections.topics && (
-              <div className="section-content">
-                <div className="topics-list">
-                  {topics.length > 0 ? (
-                    topics.map((topic, index) => (
-                      <div key={index} className="topic-item">
-                        <h4>{topic.topic_name}</h4>
-                        <p>{topic.description}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="no-topics">No topics available</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Collapsible Deep Research Section */}
-          <div className="collapsible-section">
-            <div 
-              className="section-header"
-              onClick={() => toggleSection('research')}
-            >
-              <div className="section-title">
-                <span className="section-icon">🔍</span>
-                <h3>Deep Research</h3>
-                {researchResults && (
-                  <span className="research-status completed">Completed</span>
-                )}
-              </div>
-              <div className={`expand-icon ${expandedSections.research ? 'expanded' : ''}`}>
-                ▼
-              </div>
-            </div>
-            
-            {expandedSections.research && (
-              <div className="section-content">
-                <div className="research-controls">
-                  <button
-                    onClick={startDeepResearch}
-                    disabled={isDeepResearchRunning}
-                    className={`deep-research-button ${isDeepResearchRunning ? 'running' : ''}`}
-                  >
-                    {isDeepResearchRunning ? 'Research Running...' : 'Start Deep Research'}
-                  </button>
-                  
-                  {researchResults && (
-                    <div className="research-document">
-                      <div className="document-header">
-                        <h4>Research Document</h4>
-                        <div className="document-meta">
-                          <span className="document-date">{new Date().toLocaleDateString()}</span>
-                          <span className="document-status">Completed</span>
-                        </div>
-                      </div>
-                      <div className="document-content">
-                        {Array.isArray(researchResults) ? (
-                          researchResults.map((result, index) => (
-                            <div key={index} className="document-section">
-                              {/* Handle the new deep research format */}
-                              {result.deepresearch_original && (
-                                <div className="research-section">
-                                  <div 
-                                    className="research-header"
-                                    onClick={() => toggleResearchSection('original')}
-                                  >
-                                    <h5 className="section-title">Deep Research Original</h5>
-                                    <div className="header-controls">
-                                      <button 
-                                        className="edit-button"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          toggleEditing('original')
-                                        }}
-                                        title="Edit content"
-                                      >
-                                        ✏️
-                                      </button>
-                                      <div className={`expand-icon ${expandedResearchSections.original ? 'expanded' : ''}`}>
-                                        ▼
-                                      </div>
-                                    </div>
-                                  </div>
-                                  {expandedResearchSections.original && (
-                                    <div className="research-content">
-                                      {editingSections.original ? (
-                                        <div className="editing-content">
-                                          <textarea
-                                            value={editedContent.original}
-                                            onChange={(e) => setEditedContent(prev => ({ ...prev, original: e.target.value }))}
-                                            className="edit-textarea"
-                                            placeholder="Edit the research content..."
-                                          />
-                                          <div className="edit-controls">
-                                            <button 
-                                              className="save-button"
-                                              onClick={() => saveEditedContent('original')}
-                                            >
-                                              Save
-                                            </button>
-                                            <button 
-                                              className="cancel-button"
-                                              onClick={() => cancelEditing('original')}
-                                            >
-                                              Cancel
-                                            </button>
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div className="research-text" dangerouslySetInnerHTML={{ __html: result.deepresearch_original.replace(/\n/g, '<br/>') }} />
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              
-                              {result.deepresearch_reworked && (
-                                <div className="research-section">
-                                  <div 
-                                    className="research-header"
-                                    onClick={() => toggleResearchSection('reworked')}
-                                  >
-                                    <h5 className="section-title">Deep Research Reworked</h5>
-                                    <div className={`expand-icon ${expandedResearchSections.reworked ? 'expanded' : ''}`}>
-                                      ▼
-                                    </div>
-                                  </div>
-                                  {expandedResearchSections.reworked && (
-                                    <div className="research-content">
-                                      <div className="research-text" dangerouslySetInnerHTML={{ __html: result.deepresearch_reworked.replace(/\n/g, '<br/>') }} />
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              
-                              {result.deepresearch_improved_text && (
-                                <div className="research-section">
-                                  <div 
-                                    className="research-header"
-                                    onClick={() => toggleResearchSection('improved')}
-                                  >
-                                    <h5 className="section-title">Deep Research Improved</h5>
-                                    <div className="header-controls">
-                                      <button 
-                                        className="edit-button"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          toggleEditing('improved')
-                                        }}
-                                        title="Edit content"
-                                      >
-                                        ✏️
-                                      </button>
-                                      <div className={`expand-icon ${expandedResearchSections.improved ? 'expanded' : ''}`}>
-                                        ▼
-                                      </div>
-                                    </div>
-                                  </div>
-                                  {expandedResearchSections.improved && (
-                                    <div className="research-content">
-                                      {editingSections.improved ? (
-                                        <div className="editing-content">
-                                          <textarea
-                                            value={editedContent.improved}
-                                            onChange={(e) => setEditedContent(prev => ({ ...prev, improved: e.target.value }))}
-                                            className="edit-textarea"
-                                            placeholder="Edit the research content..."
-                                          />
-                                          <div className="edit-controls">
-                                            <button 
-                                              className="save-button"
-                                              onClick={() => saveEditedContent('improved')}
-                                            >
-                                              Save
-                                            </button>
-                                            <button 
-                                              className="cancel-button"
-                                              onClick={() => cancelEditing('improved')}
-                                            >
-                                              Cancel
-                                            </button>
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div className="research-text" dangerouslySetInnerHTML={{ __html: result.deepresearch_improved_text.replace(/\n/g, '<br/>') }} />
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              
-                              {result.reasons_for_change && (
-                                <div className="research-section">
-                                  <div 
-                                    className="research-header"
-                                    onClick={() => toggleResearchSection('reasons')}
-                                  >
-                                    <h5 className="section-title">Reasons for Change</h5>
-                                    <div className={`expand-icon ${expandedResearchSections.reasons ? 'expanded' : ''}`}>
-                                      ▼
-                                    </div>
-                                  </div>
-                                  {expandedResearchSections.reasons && (
-                                    <div className="research-content">
-                                      <div className="reasons-list">
-                                        {(() => {
-                                          try {
-                                            const reasons = JSON.parse(result.reasons_for_change);
-                                            return Array.isArray(reasons) ? (
-                                              <ul>
-                                                {reasons.map((reason, reasonIndex) => (
-                                                  <li key={reasonIndex}>{reason}</li>
-                                                ))}
-                                              </ul>
-                                            ) : (
-                                              <p>{result.reasons_for_change}</p>
-                                            );
-                                          } catch {
-                                            return <p>{result.reasons_for_change}</p>;
-                                          }
-                                        })()}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              
-                              {/* Fallback for old format */}
-                              {result.deepresearch_reasons_for_change && (
-                                <div className="research-section">
-                                  <div 
-                                    className="research-header"
-                                    onClick={() => toggleResearchSection('reasons-legacy')}
-                                  >
-                                    <h5 className="section-title">Reasons for Changes (Legacy)</h5>
-                                    <div className={`expand-icon ${expandedResearchSections['reasons-legacy'] ? 'expanded' : ''}`}>
-                                      ▼
-                                    </div>
-                                  </div>
-                                  {expandedResearchSections['reasons-legacy'] && (
-                                    <div className="research-content">
-                                      <div className="reasons-list">
-                                        {(() => {
-                                          try {
-                                            const reasons = JSON.parse(result.deepresearch_reasons_for_change);
-                                            return Array.isArray(reasons) ? (
-                                              <ul>
-                                                {reasons.map((reason, reasonIndex) => (
-                                                  <li key={reasonIndex}>{reason}</li>
-                                                ))}
-                                              </ul>
-                                            ) : (
-                                              <p>{result.deepresearch_reasons_for_change}</p>
-                                            );
-                                          } catch {
-                                            return <p>{result.deepresearch_reasons_for_change}</p>;
-                                          }
-                                        })()}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              
-                              {/* Fallback for old format */}
-                              {!result.deepresearch_original && !result.deepresearch_improved_text && (
-                                <>
-                                  {result.title && <h5 className="section-title">{result.title}</h5>}
-                                  {result.summary && <p className="section-summary">{result.summary}</p>}
-                                  {result.key_points && (
-                                    <div className="key-points">
-                                      <h6>Key Points:</h6>
-                                      <ul>
-                                        {result.key_points.map((point, pointIndex) => (
-                                          <li key={pointIndex}>{point}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                  {result.details && <p className="section-details">{result.details}</p>}
-                                  {result.sources && (
-                                    <div className="sources">
-                                      <h6>Sources:</h6>
-                                      <ul>
-                                        {result.sources.map((source, sourceIndex) => (
-                                          <li key={sourceIndex}>
-                                            <a href={source.url} target="_blank" rel="noopener noreferrer">
-                                              {source.title || source.url}
-                                            </a>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                              
-                              {/* Raw data fallback */}
-                              {!result.deepresearch_original && !result.deepresearch_improved_text && !result.title && !result.summary && !result.key_points && !result.details && !result.sources && (
-                                <div className="raw-data">
-                                  <pre>{JSON.stringify(result, null, 2)}</pre>
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="document-section">
-                            <div className="raw-data">
-                              <pre>{JSON.stringify(researchResults, null, 2)}</pre>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* n8n Chat Container - positioned outside the processing content */}
-      <div ref={chatContainerRef} id="n8n-chat-container"></div>
-
-      {!isInitialized && processingStatus === 'initializing' && (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Initializing AI Agent...</p>
-        </div>
-      )}
+                         <div className="editor-actions">
+                     <button 
+                       onClick={handleProceed} 
+                       disabled={isLoading}
+                       className="action-button primary"
+                     >
+                       {isLoading ? 'Starting Newsletter Writing...' : 'Next: Newsletter Writing'}
+                     </button>
+                   </div>
     </div>
   )
 }
 
 export default ProcessingPhase
+
+

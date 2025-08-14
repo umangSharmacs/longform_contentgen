@@ -138,9 +138,9 @@ function App() {
     setCurrentPhase('processing')
   }
 
-  const handleProcessingComplete = (processingData) => {
-    console.log('Processing completed:', processingData)
-    // TODO: Move to review phase or show results
+  const handleProcessingComplete = (qcData) => {
+    console.log('Processing completed with QC data:', qcData)
+    // Store the final QC data and move to review phase
     setCurrentPhase('review')
   }
 
