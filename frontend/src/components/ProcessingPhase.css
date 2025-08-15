@@ -410,6 +410,26 @@
   color: #333 !important;
 }
 
+.edit-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  background: #fff;
+  color: #333 !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  color: #333 !important;
+}
+
 .editor-actions,
 .section-actions {
   display: none;

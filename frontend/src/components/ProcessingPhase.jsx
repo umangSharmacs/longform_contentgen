@@ -930,6 +930,28 @@ function NewsletterEditor({ newsletterData, editedData, onEdit }) {
   return (
     <div className="newsletter-editor">
       <div className="editor-section">
+        <h4>Newsletter Title</h4>
+        <input
+          type="text"
+          value={localEditedData.newsletter_title || ''}
+          onChange={(e) => handleEdit('newsletter_title', e.target.value)}
+          placeholder="Newsletter title from n8n..."
+          className="edit-input"
+        />
+      </div>
+      
+      <div className="editor-section">
+        <h4>Newsletter Summary</h4>
+        <textarea
+          value={localEditedData.newsletter_summary || ''}
+          onChange={(e) => handleEdit('newsletter_summary', e.target.value)}
+          placeholder="Newsletter summary from n8n..."
+          rows={4}
+          className="edit-textarea"
+        />
+      </div>
+      
+      <div className="editor-section">
         <h4>Newsletter Content</h4>
         <textarea
           value={localEditedData.newsletter_content || ''}
@@ -983,6 +1005,39 @@ function QcEditor({ qcData, editedData, onEdit }) {
           onChange={(e) => handleEdit('qc_content', e.target.value)}
           placeholder="Final QC content from n8n..."
           rows={12}
+          className="edit-textarea"
+        />
+      </div>
+      
+      <div className="editor-section">
+        <h4>QC Score</h4>
+        <input
+          type="text"
+          value={localEditedData.qc_score || ''}
+          onChange={(e) => handleEdit('qc_score', e.target.value)}
+          placeholder="QC score (e.g., 85/100)"
+          className="edit-input"
+        />
+      </div>
+      
+      <div className="editor-section">
+        <h4>QC Feedback</h4>
+        <textarea
+          value={localEditedData.qc_feedback || ''}
+          onChange={(e) => handleEdit('qc_feedback', e.target.value)}
+          placeholder="QC feedback and recommendations..."
+          rows={6}
+          className="edit-textarea"
+        />
+      </div>
+      
+      <div className="editor-section">
+        <h4>QC Recommendations</h4>
+        <textarea
+          value={localEditedData.qc_recommendations || ''}
+          onChange={(e) => handleEdit('qc_recommendations', e.target.value)}
+          placeholder="QC recommendations for improvement..."
+          rows={4}
           className="edit-textarea"
         />
       </div>
