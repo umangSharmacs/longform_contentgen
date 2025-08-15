@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import './ProcessingPhase.css'
 
-function ProcessingPhase({ runId, onBack, onComplete }) {
+function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
   const [researchData, setResearchData] = useState(null)
   const [editedResearch, setEditedResearch] = useState(null)
   const [newsletterData, setNewsletterData] = useState(null)
@@ -29,6 +29,42 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
   useEffect(() => {
     initializeProcessing()
   }, [])
+
+  // Restore state from initialData if available
+  useEffect(() => {
+    if (initialData) {
+      console.log('Restoring processing state from initialData:', initialData)
+      
+      if (initialData.research) {
+        console.log('Restoring research data:', initialData.research)
+        setResearchData(initialData.research)
+        setEditedResearch(initialData.research)
+        setProcessingStatus(prev => ({ ...prev, deepResearch: 'completed' }))
+      } else {
+        console.log('No research data found in initialData')
+      }
+      
+      if (initialData.newsletter) {
+        console.log('Restoring newsletter data:', initialData.newsletter)
+        setNewsletterData(initialData.newsletter)
+        setEditedNewsletter(initialData.newsletter)
+        setProcessingStatus(prev => ({ ...prev, newsletterWriting: 'completed' }))
+        setExpandedSections(prev => ({ ...prev, newsletterWriting: true }))
+      } else {
+        console.log('No newsletter data found in initialData')
+      }
+      
+      if (initialData.qc) {
+        console.log('Restoring QC data:', initialData.qc)
+        setQcData(initialData.qc)
+        setEditedQcData(initialData.qc)
+        setProcessingStatus(prev => ({ ...prev, qualityControl: 'completed' }))
+        setExpandedSections(prev => ({ ...prev, qualityControl: true }))
+      } else {
+        console.log('No QC data found in initialData')
+      }
+    }
+  }, [initialData])
 
   const initializeProcessing = async () => {
     try {
@@ -394,7 +430,13 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
 
         const data = await response.json()
         
+        // Add debugging
+        console.log('QC Status Check Response:', data)
+        console.log('QC completed:', data.success && data.data?.qc_completed)
+        console.log('QC data:', data.data?.qc_data)
+        
         if (data.success && data.data.qc_completed) {
+          console.log('Setting QC data:', data.data.qc_data)
           setQcData(data.data.qc_data)
           setEditedQcData(data.data.qc_data)
           setProcessingStatus(prev => ({ ...prev, qualityControl: 'completed' }))
@@ -529,28 +571,74 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
         )
       } else if (status === 'completed') {
         return (
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
-              onClick={restartQualityControl}
-              disabled={isLoading}
-              className="action-button restart"
-            >
-              Restart
-            </button>
-            <button 
-              onClick={() => onComplete(editedQcData || qcData)}
-              disabled={isLoading}
-              className="action-button primary"
-            >
-              Complete
-            </button>
-          </div>
+          <button 
+            onClick={restartQualityControl}
+            disabled={isLoading}
+            className="action-button restart"
+          >
+            Restart
+          </button>
         )
       }
     }
     
     return null
   }
+
+  const allStagesCompleted = () => {
+    return processingStatus.deepResearch === 'completed' && 
+           processingStatus.newsletterWriting === 'completed' && 
+           processingStatus.qualityControl === 'completed'
+  }
+
+  const handleMoveToReview = () => {
+    const finalData = {
+      research: editedResearch || researchData,
+      newsletter: editedNewsletter || newsletterData,
+      qc: editedQcData || qcData
+    }
+    
+    console.log('Moving to review with final data:', finalData)
+    console.log('Research data:', finalData.research)
+    console.log('Newsletter data:', finalData.newsletter)
+    console.log('QC data:', finalData.qc)
+    
+    onComplete(finalData)
+  }
+
+  const checkDatabaseData = async () => {
+    try {
+      const nonce = window.nslfg_ajax?.nonce
+      if (!nonce) {
+        throw new Error('Security token not available')
+      }
+
+      const response = await fetch('/wp-admin/admin-ajax.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'check-run-data',
+          run_id: runId,
+          nonce: nonce
+        })
+      })
+
+      const data = await response.json()
+      console.log('Database data for run:', data)
+    } catch (error) {
+      console.error('Error checking database data:', error)
+    }
+  }
+
+  // Add this to the component to call it when needed
+  useEffect(() => {
+    if (runId) {
+      console.log('Checking database data for run:', runId)
+      checkDatabaseData()
+    }
+  }, [runId])
 
   return (
     <div className="processing-phase">
@@ -765,6 +853,14 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
           )}
         </div>
       </div>
+
+      {allStagesCompleted() && (
+        <div className="next-button-container">
+          <button onClick={handleMoveToReview} className="action-button primary">
+            Next: Review Generated Content
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -870,13 +966,21 @@ function QcEditor({ qcData, editedData, onEdit }) {
     return <div>No QC data available</div>
   }
 
+  // Get the content from the correct field
+  const getQcContent = () => {
+    return localEditedData.qc_content || 
+           localEditedData.final_content || 
+           localEditedData.content || 
+           ''
+  }
+
   return (
     <div className="qc-editor">
       <div className="editor-section">
         <h4>Final Content</h4>
         <textarea
-          value={localEditedData.final_content || ''}
-          onChange={(e) => handleEdit('final_content', e.target.value)}
+          value={getQcContent()}
+          onChange={(e) => handleEdit('qc_content', e.target.value)}
           placeholder="Final QC content from n8n..."
           rows={12}
           className="edit-textarea"

@@ -507,3 +507,28 @@
     transform: translateY(0);
   }
 }
+
+/* Final Next Button */
+.next-button-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid #e9ecef;
+}
+
+.next-button-container .action-button {
+  padding: 15px 30px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  min-width: 200px !important;
+  background: linear-gradient(135deg, #28a745, #20c997) !important;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+.next-button-container .action-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4) !important;
+  background: linear-gradient(135deg, #218838, #1ea085) !important;
+}

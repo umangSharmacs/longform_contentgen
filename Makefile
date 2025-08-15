@@ -38,6 +38,7 @@ build-frontend:
 # Copy built frontend files to plugin directory
 copy-frontend:
 	@echo "$(GREEN)Copying frontend files to plugin...$(NC)"
+	@rm -rf $(PLUGIN_DIR)/assets
 	@mkdir -p $(PLUGIN_DIR)/assets
 	@cp -r $(BUILD_DIR)/* $(PLUGIN_DIR)/assets/
 	@echo "$(GREEN)Frontend files copied to $(PLUGIN_DIR)/assets/$(NC)"

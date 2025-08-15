@@ -3,6 +3,7 @@ import ResultsGrid from './components/ResultsGrid'
 import SelectionPhase from './components/SelectionPhase'
 import TopicsPhase from './components/TopicsPhase'
 import ProcessingPhase from './components/ProcessingPhase'
+import ReviewPhase from './components/ReviewPhase'
 import PhaseFlow from './components/PhaseFlow'
 import PreviousRuns from './components/PreviousRuns'
 import NewRunForm from './components/NewRunForm'
@@ -17,6 +18,8 @@ function App() {
   const [currentPhase, setCurrentPhase] = useState('search') // 'search', 'selection', 'topics', 'processing', 'review'
   const [topics, setTopics] = useState([])
   const [currentRunId, setCurrentRunId] = useState(null)
+  const [finalData, setFinalData] = useState(null)
+  const [processingData, setProcessingData] = useState(null)
 
   const handleFetchData = async () => {
     setIsLoading(true)
@@ -138,14 +141,20 @@ function App() {
     setCurrentPhase('processing')
   }
 
-  const handleProcessingComplete = (qcData) => {
-    console.log('Processing completed with QC data:', qcData)
-    // Store the final QC data and move to review phase
+  const handleProcessingComplete = (finalData) => {
+    console.log('Processing completed with final data:', finalData)
+    setFinalData(finalData)
+    setProcessingData(finalData) // Store processing data for going back
     setCurrentPhase('review')
   }
 
   const handleBackToTopics = () => {
     setCurrentPhase('topics')
+  }
+
+  const handleBackToProcessing = () => {
+    setCurrentPhase('processing')
+    // processingData will be passed to ProcessingPhase to restore state
   }
 
   const handleLoadPreviousRun = (runData) => {
@@ -199,6 +208,28 @@ function App() {
             runId={currentRunId}
             onComplete={handleProcessingComplete}
             onBack={handleBackToTopics}
+            initialData={processingData}
+          />
+        </main>
+      </div>
+    )
+  }
+
+  // Render review phase
+  if (currentPhase === 'review') {
+    return (
+      <div className="app review-app">
+        <PhaseFlow currentPhase={currentPhase} />
+        
+        <header className="app-header">
+          <h1>NeedleSpotter LongformGen</h1>
+          <p>Review and download generated content</p>
+        </header>
+
+        <main className="app-main">
+          <ReviewPhase 
+            finalData={finalData}
+            onBack={handleBackToProcessing}
           />
         </main>
       </div>
