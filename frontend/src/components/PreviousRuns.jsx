@@ -5,6 +5,7 @@ const PreviousRuns = ({ onLoadRun }) => {
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
     loadPreviousRuns();
@@ -63,10 +64,6 @@ const PreviousRuns = ({ onLoadRun }) => {
   };
 
   const handleDeleteRun = async (runId) => {
-    if (!window.confirm('Are you sure you want to delete this run? This action cannot be undone.')) {
-      return;
-    }
-
     try {
       const formData = new FormData();
       formData.append('action', 'delete-run-longformgen');
@@ -83,6 +80,7 @@ const PreviousRuns = ({ onLoadRun }) => {
       if (data.success) {
         // Remove the deleted run from the list
         setRuns(prevRuns => prevRuns.filter(run => run.run_id !== runId));
+        setDeleteConfirm(null);
       } else {
         setError(data.data || 'Failed to delete run');
       }
@@ -105,52 +103,131 @@ const PreviousRuns = ({ onLoadRun }) => {
     return phases.length > 0 ? phases.join(' → ') : 'No phases';
   };
 
-  if (loading) {
-    return <div className="previous-runs-loading">Loading previous runs...</div>;
-  }
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return '#28a745';
+      case 'failed':
+        return '#dc3545';
+      case 'processing':
+        return '#ffc107';
+      case 'selection':
+        return '#17a2b8';
+      case 'topics':
+        return '#6f42c1';
+      default:
+        return '#6c757d';
+    }
+  };
 
-  if (error) {
+  const getStatusIcon = (status) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return '✓';
+      case 'failed':
+        return '✗';
+      case 'processing':
+        return '⟳';
+      case 'selection':
+        return '⚙';
+      case 'topics':
+        return '📝';
+      default:
+        return '•';
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="previous-runs-error">
-        <p>Error: {error}</p>
-        <button onClick={loadPreviousRuns} className="retry-button">Retry</button>
+      <div className="previous-runs">
+        <h3>Previous Runs</h3>
+        <div className="previous-runs-loading">
+          <div className="loading-spinner"></div>
+          <p>Loading previous runs...</p>
+        </div>
       </div>
     );
   }
 
-  if (runs.length === 0) {
-    return <div className="previous-runs-empty">No previous runs found.</div>;
+  if (error) {
+    return (
+      <div className="previous-runs">
+        <h3>Previous Runs</h3>
+        <div className="previous-runs-error">
+          <p>Error: {error}</p>
+          <button onClick={loadPreviousRuns} className="retry-button">Retry</button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="previous-runs">
       <h3>Previous Runs</h3>
-      <div className="runs-list">
-        {runs.map((run) => (
-          <div key={run.run_id} className="run-item">
-            <div className="run-info">
-              <div className="run-id">{run.run_id.substring(0, 8)}...</div>
-              <div className="run-date">{formatDate(run.created_at)}</div>
-              <div className="run-status">{run.status}</div>
-              <div className="run-phases">{getPhaseStatus(run)}</div>
+      {runs.length === 0 ? (
+        <div className="previous-runs-empty">
+          <div className="empty-icon">📋</div>
+          <p>No previous runs found</p>
+          <small>Start a new run to see it here</small>
+        </div>
+      ) : (
+        <div className="runs-list">
+          {runs.map((run) => (
+            <div key={run.run_id} className="run-item">
+              <div className="run-info">
+                <div className="run-header">
+                  <div className="run-id">{run.run_id.substring(0, 8)}...</div>
+                  <div 
+                    className="run-status"
+                    style={{ color: getStatusColor(run.status) }}
+                  >
+                    <span className="status-icon">{getStatusIcon(run.status)}</span>
+                    {run.status}
+                  </div>
+                </div>
+                <div className="run-details">
+                  <div className="run-date">{formatDate(run.created_at)}</div>
+                  <div className="run-phases">{getPhaseStatus(run)}</div>
+                </div>
+              </div>
+              <div className="run-actions">
+                {deleteConfirm === run.run_id ? (
+                  <div className="delete-confirmation">
+                    <span className="confirm-text">Delete?</span>
+                    <button 
+                      onClick={() => handleDeleteRun(run.run_id)}
+                      className="confirm-delete-button"
+                    >
+                      Yes
+                    </button>
+                    <button 
+                      onClick={() => setDeleteConfirm(null)}
+                      className="cancel-delete-button"
+                    >
+                      No
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => handleLoadRun(run.run_id)}
+                      className="load-run-button"
+                    >
+                      Load
+                    </button>
+                    <button 
+                      onClick={() => setDeleteConfirm(run.run_id)}
+                      className="delete-run-button"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="run-actions">
-              <button 
-                onClick={() => handleLoadRun(run.run_id)}
-                className="load-run-button"
-              >
-                Load Run
-              </button>
-              <button 
-                onClick={() => handleDeleteRun(run.run_id)}
-                className="delete-run-button"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

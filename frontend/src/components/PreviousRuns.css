@@ -45,7 +45,13 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+}
+
+.run-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .run-id {
@@ -55,28 +61,32 @@
   font-weight: 600;
 }
 
+.run-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-icon {
+  font-size: 10px;
+}
+
+.run-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .run-date {
-  font-size: 12px;
+  font-size: 11px;
   color: #6c757d;
 }
 
-.run-status {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: #28a745;
-}
-
-.run-status.failed {
-  color: #dc3545;
-}
-
-.run-status.processing {
-  color: #ffc107;
-}
-
 .run-phases {
-  font-size: 11px;
+  font-size: 10px;
   color: #495057;
   font-style: italic;
 }
@@ -91,9 +101,9 @@
   background: #007bff;
   color: white;
   border: none;
-  padding: 8px 16px;
+  padding: 6px 12px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
@@ -106,9 +116,9 @@
   background: #dc3545;
   color: white;
   border: none;
-  padding: 8px 16px;
+  padding: 6px 12px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
@@ -117,11 +127,78 @@
   background: #c82333;
 }
 
+.delete-confirmation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: fadeIn 0.2s ease;
+}
+
+.confirm-text {
+  font-size: 11px;
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.confirm-delete-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.confirm-delete-button:hover {
+  background: #c82333;
+}
+
+.cancel-delete-button {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.cancel-delete-button:hover {
+  background: #545b62;
+}
+
 .previous-runs-loading {
   text-align: center;
-  padding: 20px;
+  padding: 40px 20px;
   color: #6c757d;
-  font-style: italic;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.previous-runs-loading p {
+  margin: 0;
+  font-size: 14px;
 }
 
 .previous-runs-error {
@@ -150,9 +227,25 @@
 
 .previous-runs-empty {
   text-align: center;
-  padding: 20px;
+  padding: 40px 20px;
   color: #6c757d;
-  font-style: italic;
+}
+
+.empty-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+.previous-runs-empty p {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.previous-runs-empty small {
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 /* Custom scrollbar styling */

@@ -361,6 +361,20 @@
   gap: 20px;
 }
 
+/* Newsletter Editor */
+.newsletter-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* QC Editor */
+.qc-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .editor-section {
   display: flex;
   flex-direction: column;
@@ -385,6 +399,7 @@
   line-height: 1.6;
   resize: vertical;
   background: #fff;
+  color: #333 !important;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -392,16 +407,46 @@
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  color: #333 !important;
 }
 
 .editor-actions,
 .section-actions {
+  display: none;
+}
+
+/* Section Header Buttons */
+.section-header-buttons {
   display: flex;
-  justify-content: flex-end;
   gap: 10px;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #e9ecef;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.section-header .action-button {
+  padding: 10px 20px !important;
+  font-size: 12px !important;
+  min-width: auto !important;
+  margin: 0 !important;
+  border-radius: 4px !important;
+}
+
+.section-header .action-button.restart {
+  background-color: #dc3545 !important;
+  color: white !important;
+}
+
+.section-header .action-button.restart:hover:not(:disabled) {
+  background-color: #c82333 !important;
+}
+
+.section-header .action-button.retry {
+  background-color: #ffc107 !important;
+  color: #212529 !important;
+}
+
+.section-header .action-button.retry:hover:not(:disabled) {
+  background-color: #e0a800 !important;
 }
 
 /* Responsive Design */

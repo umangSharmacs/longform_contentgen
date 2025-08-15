@@ -5,7 +5,9 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
   const [researchData, setResearchData] = useState(null)
   const [editedResearch, setEditedResearch] = useState(null)
   const [newsletterData, setNewsletterData] = useState(null)
+  const [editedNewsletter, setEditedNewsletter] = useState(null)
   const [qcData, setQcData] = useState(null)
+  const [editedQcData, setEditedQcData] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [topics, setTopics] = useState([])
@@ -13,15 +15,13 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
   // Collapsible section states
   const [expandedSections, setExpandedSections] = useState({
     deepResearch: true,
-    editResearch: true,
-    newsletterWriting: true,
-    qualityControl: true
+    newsletterWriting: false,
+    qualityControl: false
   })
 
   // Processing status states
   const [processingStatus, setProcessingStatus] = useState({
     deepResearch: 'pending', // pending, running, completed, failed
-    editResearch: 'pending',
     newsletterWriting: 'pending',
     qualityControl: 'pending'
   })
@@ -110,6 +110,17 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
     setError(null)
     setProcessingStatus(prev => ({ ...prev, deepResearch: 'running' }))
     
+    // Clear downstream stages when restarting
+    setNewsletterData(null)
+    setEditedNewsletter(null)
+    setQcData(null)
+    setEditedQcData(null)
+    setProcessingStatus(prev => ({ 
+      ...prev, 
+      newsletterWriting: 'pending',
+      qualityControl: 'pending'
+    }))
+    
     try {
       const nonce = window.nslfg_ajax?.nonce
       if (!nonce) {
@@ -147,6 +158,10 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
     }
   }
 
+  const restartDeepResearch = () => {
+    startDeepResearch()
+  }
+
   const pollForResearchCompletion = async () => {
     const maxAttempts = 60
     let attempts = 0
@@ -177,10 +192,10 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
         console.log('Research status check response:', data)
         
         if (data.success && data.data.research_completed) {
-          console.log('Research completed, moving to editing phase')
+          console.log('Research completed, data ready for editing')
           setResearchData(data.data.research_data)
+          setEditedResearch(data.data.research_data)
           setProcessingStatus(prev => ({ ...prev, deepResearch: 'completed' }))
-          setExpandedSections(prev => ({ ...prev, editResearch: true }))
           return
         } else {
           console.log('Research not completed yet, continuing to poll...')
@@ -200,14 +215,21 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
 
   const handleResearchEdit = (editedData) => {
     setEditedResearch(editedData)
-    // Mark edit research as completed when user edits the data
-    setProcessingStatus(prev => ({ ...prev, editResearch: 'completed' }))
   }
 
   const startNewsletterWriting = async () => {
     setIsLoading(true)
     setError(null)
     setProcessingStatus(prev => ({ ...prev, newsletterWriting: 'running' }))
+    setExpandedSections(prev => ({ ...prev, newsletterWriting: true }))
+    
+    // Clear downstream stages when restarting
+    setQcData(null)
+    setEditedQcData(null)
+    setProcessingStatus(prev => ({ 
+      ...prev, 
+      qualityControl: 'pending'
+    }))
     
     try {
       const nonce = window.nslfg_ajax?.nonce
@@ -245,6 +267,10 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
     }
   }
 
+  const restartNewsletterWriting = () => {
+    startNewsletterWriting()
+  }
+
   const pollForNewsletterCompletion = async () => {
     const maxAttempts = 60
     let attempts = 0
@@ -274,8 +300,8 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
         
         if (data.success && data.data.newsletter_completed) {
           setNewsletterData(data.data.newsletter_data)
+          setEditedNewsletter(data.data.newsletter_data)
           setProcessingStatus(prev => ({ ...prev, newsletterWriting: 'completed' }))
-          setExpandedSections(prev => ({ ...prev, qualityControl: true }))
           return
         }
 
@@ -291,10 +317,15 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
     poll()
   }
 
+  const handleNewsletterEdit = (editedData) => {
+    setEditedNewsletter(editedData)
+  }
+
   const startQualityControl = async () => {
     setIsLoading(true)
     setError(null)
     setProcessingStatus(prev => ({ ...prev, qualityControl: 'running' }))
+    setExpandedSections(prev => ({ ...prev, qualityControl: true }))
     
     try {
       const nonce = window.nslfg_ajax?.nonce
@@ -310,7 +341,7 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
         body: new URLSearchParams({
           action: 'longform-QC',
           run_id: runId,
-          newsletter_data: JSON.stringify(newsletterData),
+          newsletter_data: JSON.stringify(editedNewsletter || newsletterData),
           nonce: nonce
         })
       })
@@ -330,6 +361,10 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const restartQualityControl = () => {
+    startQualityControl()
   }
 
   const pollForQCCompletion = async () => {
@@ -361,6 +396,7 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
         
         if (data.success && data.data.qc_completed) {
           setQcData(data.data.qc_data)
+          setEditedQcData(data.data.qc_data)
           setProcessingStatus(prev => ({ ...prev, qualityControl: 'completed' }))
           return
         }
@@ -377,26 +413,15 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
     poll()
   }
 
+  const handleQcEdit = (editedData) => {
+    setEditedQcData(editedData)
+  }
+
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
     }))
-  }
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'WAIT'
-      case 'running':
-        return 'RUN'
-      case 'completed':
-        return 'DONE'
-      case 'failed':
-        return 'FAIL'
-      default:
-        return 'WAIT'
-    }
   }
 
   const getStatusColor = (status) => {
@@ -414,16 +439,127 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
     }
   }
 
+  const getSectionHeaderButtons = (stage) => {
+    const status = processingStatus[stage]
+    
+    if (stage === 'deepResearch') {
+      if (status === 'pending') {
+        return (
+          <button 
+            onClick={startDeepResearch}
+            disabled={isLoading}
+            className="action-button primary"
+          >
+            {isLoading ? 'Starting...' : 'Start Research'}
+          </button>
+        )
+      } else if (status === 'failed') {
+        return (
+          <button 
+            onClick={restartDeepResearch}
+            disabled={isLoading}
+            className="action-button retry"
+          >
+            Retry
+          </button>
+        )
+      } else if (status === 'completed') {
+        return (
+          <button 
+            onClick={restartDeepResearch}
+            disabled={isLoading}
+            className="action-button restart"
+          >
+            Restart
+          </button>
+        )
+      }
+    } else if (stage === 'newsletterWriting') {
+      if (status === 'pending' && processingStatus.deepResearch === 'completed') {
+        return (
+          <button 
+            onClick={startNewsletterWriting}
+            disabled={isLoading}
+            className="action-button primary"
+          >
+            {isLoading ? 'Starting...' : 'Start Newsletter'}
+          </button>
+        )
+      } else if (status === 'failed') {
+        return (
+          <button 
+            onClick={restartNewsletterWriting}
+            disabled={isLoading}
+            className="action-button retry"
+          >
+            Retry
+          </button>
+        )
+      } else if (status === 'completed') {
+        return (
+          <button 
+            onClick={restartNewsletterWriting}
+            disabled={isLoading}
+            className="action-button restart"
+          >
+            Restart
+          </button>
+        )
+      }
+    } else if (stage === 'qualityControl') {
+      if (status === 'pending' && processingStatus.newsletterWriting === 'completed') {
+        return (
+          <button 
+            onClick={startQualityControl}
+            disabled={isLoading}
+            className="action-button primary"
+          >
+            {isLoading ? 'Starting...' : 'Start QC'}
+          </button>
+        )
+      } else if (status === 'failed') {
+        return (
+          <button 
+            onClick={restartQualityControl}
+            disabled={isLoading}
+            className="action-button retry"
+          >
+            Retry
+          </button>
+        )
+      } else if (status === 'completed') {
+        return (
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={restartQualityControl}
+              disabled={isLoading}
+              className="action-button restart"
+            >
+              Restart
+            </button>
+            <button 
+              onClick={() => onComplete(editedQcData || qcData)}
+              disabled={isLoading}
+              className="action-button primary"
+            >
+              Complete
+            </button>
+          </div>
+        )
+      }
+    }
+    
+    return null
+  }
+
   return (
     <div className="processing-phase">
       <div className="processing-header">
         <h2>Content Generation Pipeline</h2>
-                 <button onClick={onBack} className="back-button">
-           Back to Topics
-         </button>
+        <button onClick={onBack} className="back-button">
+          Back to Topics
+        </button>
       </div>
-      
-
 
       {error && (
         <div className="error-message">
@@ -442,40 +578,34 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
       <div className="processing-content">
         {/* Deep Research Section */}
         <div className="collapsible-section">
-          <div 
-            className="section-header"
-            onClick={() => toggleSection('deepResearch')}
-          >
-                         <div className="section-title">
-               <span className="section-icon">RESEARCH</span>
-               <h3>1. Deep Research</h3>
+          <div className="section-header">
+            <div 
+              className="section-title"
+              onClick={() => toggleSection('deepResearch')}
+              style={{ cursor: 'pointer' }}
+            >
+              <h3>1. Deep Research</h3>
               <span 
                 className="status-badge"
                 style={{ backgroundColor: getStatusColor(processingStatus.deepResearch) }}
               >
-                {getStatusIcon(processingStatus.deepResearch)} {processingStatus.deepResearch}
+                {processingStatus.deepResearch}
               </span>
             </div>
-            <span className={`expand-icon ${expandedSections.deepResearch ? 'expanded' : ''}`}>
+            <div className="section-header-buttons">
+              {getSectionHeaderButtons('deepResearch')}
+            </div>
+            <span 
+              className={`expand-icon ${expandedSections.deepResearch ? 'expanded' : ''}`}
+              onClick={() => toggleSection('deepResearch')}
+              style={{ cursor: 'pointer' }}
+            >
               ▼
             </span>
           </div>
           
           {expandedSections.deepResearch && (
             <div className="section-content">
-              {processingStatus.deepResearch === 'pending' && (
-                <div className="step-content">
-                  <p>Deep research will analyze the selected topics and generate comprehensive content.</p>
-                  <button 
-                    onClick={startDeepResearch}
-                    disabled={isLoading}
-                    className="action-button primary"
-                  >
-                    {isLoading ? 'Starting...' : 'Start Deep Research'}
-                  </button>
-                </div>
-              )}
-              
               {processingStatus.deepResearch === 'running' && (
                 <div className="step-content">
                   <div className="loading-indicator">
@@ -487,80 +617,22 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
               
               {processingStatus.deepResearch === 'completed' && (
                 <div className="step-content">
-                                     <div className="success-message">
-                     <p>SUCCESS: Deep research completed successfully!</p>
-                   </div>
-                                     {researchData && (
-                     <div className="research-preview">
-                       <h4>Research Preview:</h4>
-                       <div className="content-preview">
-                         <pre>{JSON.stringify(researchData, null, 2)}</pre>
-                       </div>
-                     </div>
-                   )}
-                   <div className="section-actions">
-                     <button 
-                       onClick={() => setExpandedSections(prev => ({ ...prev, editResearch: true }))}
-                       className="action-button primary"
-                     >
-                       Next: Edit Research
-                     </button>
-                   </div>
+                  <div className="success-message">
+                    <p>SUCCESS: Deep research completed successfully!</p>
+                  </div>
+                  <ResearchEditor 
+                    researchData={researchData}
+                    editedData={editedResearch}
+                    onEdit={handleResearchEdit}
+                  />
                 </div>
               )}
               
               {processingStatus.deepResearch === 'failed' && (
                 <div className="step-content">
-                                     <div className="error-message">
-                     <p>ERROR: Deep research failed. Please try again.</p>
-                   </div>
-                  <button 
-                    onClick={startDeepResearch}
-                    className="action-button primary"
-                  >
-                    Retry Deep Research
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Edit Research Section */}
-        <div className="collapsible-section">
-          <div 
-            className="section-header"
-            onClick={() => toggleSection('editResearch')}
-          >
-                         <div className="section-title">
-               <span className="section-icon">EDIT</span>
-               <h3>2. Edit Research</h3>
-              <span 
-                className="status-badge"
-                style={{ backgroundColor: getStatusColor(processingStatus.editResearch) }}
-              >
-                {getStatusIcon(processingStatus.editResearch)} {processingStatus.editResearch}
-              </span>
-            </div>
-            <span className={`expand-icon ${expandedSections.editResearch ? 'expanded' : ''}`}>
-              ▼
-            </span>
-          </div>
-          
-          {expandedSections.editResearch && (
-            <div className="section-content">
-              {processingStatus.deepResearch === 'completed' ? (
-                <div className="step-content">
-                  <ResearchEditor 
-                    researchData={researchData}
-                    onEdit={handleResearchEdit}
-                    onProceed={startNewsletterWriting}
-                    isLoading={isLoading}
-                  />
-                </div>
-              ) : (
-                <div className="step-content">
-                  <p>Please complete the Deep Research step first.</p>
+                  <div className="error-message">
+                    <p>ERROR: Deep research failed. Please try again.</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -569,42 +641,34 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
 
         {/* Newsletter Writing Section */}
         <div className="collapsible-section">
-          <div 
-            className="section-header"
-            onClick={() => toggleSection('newsletterWriting')}
-          >
-                         <div className="section-title">
-               <span className="section-icon">NEWSLETTER</span>
-               <h3>3. Newsletter Writing</h3>
+          <div className="section-header">
+            <div 
+              className="section-title"
+              onClick={() => toggleSection('newsletterWriting')}
+              style={{ cursor: 'pointer' }}
+            >
+              <h3>2. Newsletter Writing</h3>
               <span 
                 className="status-badge"
                 style={{ backgroundColor: getStatusColor(processingStatus.newsletterWriting) }}
               >
-                {getStatusIcon(processingStatus.newsletterWriting)} {processingStatus.newsletterWriting}
+                {processingStatus.newsletterWriting}
               </span>
             </div>
-            <span className={`expand-icon ${expandedSections.newsletterWriting ? 'expanded' : ''}`}>
+            <div className="section-header-buttons">
+              {getSectionHeaderButtons('newsletterWriting')}
+            </div>
+            <span 
+              className={`expand-icon ${expandedSections.newsletterWriting ? 'expanded' : ''}`}
+              onClick={() => toggleSection('newsletterWriting')}
+              style={{ cursor: 'pointer' }}
+            >
               ▼
             </span>
           </div>
           
           {expandedSections.newsletterWriting && (
             <div className="section-content">
-              {processingStatus.newsletterWriting === 'pending' && (
-                <div className="step-content">
-                  <p>Newsletter writing will generate content based on the edited research.</p>
-                  {processingStatus.editResearch === 'completed' && (
-                    <button 
-                      onClick={startNewsletterWriting}
-                      disabled={isLoading}
-                      className="action-button primary"
-                    >
-                      {isLoading ? 'Starting...' : 'Start Newsletter Writing'}
-                    </button>
-                  )}
-                </div>
-              )}
-              
               {processingStatus.newsletterWriting === 'running' && (
                 <div className="step-content">
                   <div className="loading-indicator">
@@ -616,39 +680,22 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
               
               {processingStatus.newsletterWriting === 'completed' && (
                 <div className="step-content">
-                                     <div className="success-message">
-                     <p>SUCCESS: Newsletter writing completed successfully!</p>
-                   </div>
-                                     {newsletterData && (
-                     <div className="newsletter-preview">
-                       <h4>Newsletter Preview:</h4>
-                       <div className="content-preview">
-                         <pre>{JSON.stringify(newsletterData, null, 2)}</pre>
-                       </div>
-                     </div>
-                   )}
-                   <div className="section-actions">
-                     <button 
-                       onClick={() => setExpandedSections(prev => ({ ...prev, qualityControl: true }))}
-                       className="action-button primary"
-                     >
-                       Next: Quality Control
-                     </button>
-                   </div>
+                  <div className="success-message">
+                    <p>SUCCESS: Newsletter writing completed successfully!</p>
+                  </div>
+                  <NewsletterEditor 
+                    newsletterData={newsletterData}
+                    editedData={editedNewsletter}
+                    onEdit={handleNewsletterEdit}
+                  />
                 </div>
               )}
               
               {processingStatus.newsletterWriting === 'failed' && (
                 <div className="step-content">
-                                     <div className="error-message">
-                     <p>ERROR: Newsletter writing failed. Please try again.</p>
-                   </div>
-                  <button 
-                    onClick={startNewsletterWriting}
-                    className="action-button primary"
-                  >
-                    Retry Newsletter Writing
-                  </button>
+                  <div className="error-message">
+                    <p>ERROR: Newsletter writing failed. Please try again.</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -657,42 +704,34 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
 
         {/* Quality Control Section */}
         <div className="collapsible-section">
-          <div 
-            className="section-header"
-            onClick={() => toggleSection('qualityControl')}
-          >
-                         <div className="section-title">
-               <span className="section-icon">QC</span>
-               <h3>4. Quality Control</h3>
+          <div className="section-header">
+            <div 
+              className="section-title"
+              onClick={() => toggleSection('qualityControl')}
+              style={{ cursor: 'pointer' }}
+            >
+              <h3>3. Quality Control</h3>
               <span 
                 className="status-badge"
                 style={{ backgroundColor: getStatusColor(processingStatus.qualityControl) }}
               >
-                {getStatusIcon(processingStatus.qualityControl)} {processingStatus.qualityControl}
+                {processingStatus.qualityControl}
               </span>
             </div>
-            <span className={`expand-icon ${expandedSections.qualityControl ? 'expanded' : ''}`}>
+            <div className="section-header-buttons">
+              {getSectionHeaderButtons('qualityControl')}
+            </div>
+            <span 
+              className={`expand-icon ${expandedSections.qualityControl ? 'expanded' : ''}`}
+              onClick={() => toggleSection('qualityControl')}
+              style={{ cursor: 'pointer' }}
+            >
               ▼
             </span>
           </div>
           
           {expandedSections.qualityControl && (
             <div className="section-content">
-              {processingStatus.qualityControl === 'pending' && (
-                <div className="step-content">
-                  <p>Quality control will review and finalize the newsletter content.</p>
-                  {processingStatus.newsletterWriting === 'completed' && (
-                    <button 
-                      onClick={startQualityControl}
-                      disabled={isLoading}
-                      className="action-button primary"
-                    >
-                      {isLoading ? 'Starting...' : 'Start Quality Control'}
-                    </button>
-                  )}
-                </div>
-              )}
-              
               {processingStatus.qualityControl === 'running' && (
                 <div className="step-content">
                   <div className="loading-indicator">
@@ -704,39 +743,22 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
               
               {processingStatus.qualityControl === 'completed' && (
                 <div className="step-content">
-                                     <div className="success-message">
-                     <p>SUCCESS: Quality control completed successfully!</p>
-                   </div>
-                                     {qcData && (
-                     <div className="qc-preview">
-                       <h4>Final Results:</h4>
-                       <div className="content-preview">
-                         <pre>{JSON.stringify(qcData, null, 2)}</pre>
-                       </div>
-                     </div>
-                   )}
-                   <div className="section-actions">
-                     <button 
-                       onClick={() => onComplete(qcData)}
-                       className="action-button primary"
-                     >
-                       Complete: View Final Results
-                     </button>
-                   </div>
+                  <div className="success-message">
+                    <p>SUCCESS: Quality control completed successfully!</p>
+                  </div>
+                  <QcEditor 
+                    qcData={qcData}
+                    editedData={editedQcData}
+                    onEdit={handleQcEdit}
+                  />
                 </div>
               )}
               
               {processingStatus.qualityControl === 'failed' && (
                 <div className="step-content">
-                                     <div className="error-message">
-                     <p>ERROR: Quality control failed. Please try again.</p>
-                   </div>
-                  <button 
-                    onClick={startQualityControl}
-                    className="action-button primary"
-                  >
-                    Retry Quality Control
-                  </button>
+                  <div className="error-message">
+                    <p>ERROR: Quality control failed. Please try again.</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -748,27 +770,22 @@ function ProcessingPhase({ runId, onBack, onComplete }) {
 }
 
 // Research Editor Component
-function ResearchEditor({ researchData, onEdit, onProceed, isLoading }) {
-  const [editedData, setEditedData] = useState(researchData || {})
+function ResearchEditor({ researchData, editedData, onEdit }) {
+  const [localEditedData, setLocalEditedData] = useState(editedData || {})
 
   useEffect(() => {
     if (researchData) {
-      setEditedData(researchData)
+      setLocalEditedData(researchData)
     }
   }, [researchData])
 
   const handleEdit = (field, value) => {
     const newData = {
-      ...editedData,
+      ...localEditedData,
       [field]: value
     }
-    setEditedData(newData)
+    setLocalEditedData(newData)
     onEdit(newData)
-  }
-
-  const handleProceed = () => {
-    onEdit(editedData)
-    onProceed()
   }
 
   if (!researchData) {
@@ -780,23 +797,91 @@ function ResearchEditor({ researchData, onEdit, onProceed, isLoading }) {
       <div className="editor-section">
         <h4>Deep Research Content</h4>
         <textarea
-          value={editedData.deepresearch_original || ''}
+          value={localEditedData.deepresearch_original || ''}
           onChange={(e) => handleEdit('deepresearch_original', e.target.value)}
           placeholder="Deep research content from n8n..."
           rows={12}
           className="edit-textarea"
         />
       </div>
+    </div>
+  )
+}
 
-                         <div className="editor-actions">
-                     <button 
-                       onClick={handleProceed} 
-                       disabled={isLoading}
-                       className="action-button primary"
-                     >
-                       {isLoading ? 'Starting Newsletter Writing...' : 'Next: Newsletter Writing'}
-                     </button>
-                   </div>
+// Newsletter Editor Component
+function NewsletterEditor({ newsletterData, editedData, onEdit }) {
+  const [localEditedData, setLocalEditedData] = useState(editedData || {})
+
+  useEffect(() => {
+    if (newsletterData) {
+      setLocalEditedData(newsletterData)
+    }
+  }, [newsletterData])
+
+  const handleEdit = (field, value) => {
+    const newData = {
+      ...localEditedData,
+      [field]: value
+    }
+    setLocalEditedData(newData)
+    onEdit(newData)
+  }
+
+  if (!newsletterData) {
+    return <div>No newsletter data available</div>
+  }
+
+  return (
+    <div className="newsletter-editor">
+      <div className="editor-section">
+        <h4>Newsletter Content</h4>
+        <textarea
+          value={localEditedData.newsletter_content || ''}
+          onChange={(e) => handleEdit('newsletter_content', e.target.value)}
+          placeholder="Newsletter content from n8n..."
+          rows={12}
+          className="edit-textarea"
+        />
+      </div>
+    </div>
+  )
+}
+
+// QC Editor Component
+function QcEditor({ qcData, editedData, onEdit }) {
+  const [localEditedData, setLocalEditedData] = useState(editedData || {})
+
+  useEffect(() => {
+    if (qcData) {
+      setLocalEditedData(qcData)
+    }
+  }, [qcData])
+
+  const handleEdit = (field, value) => {
+    const newData = {
+      ...localEditedData,
+      [field]: value
+    }
+    setLocalEditedData(newData)
+    onEdit(newData)
+  }
+
+  if (!qcData) {
+    return <div>No QC data available</div>
+  }
+
+  return (
+    <div className="qc-editor">
+      <div className="editor-section">
+        <h4>Final Content</h4>
+        <textarea
+          value={localEditedData.final_content || ''}
+          onChange={(e) => handleEdit('final_content', e.target.value)}
+          placeholder="Final QC content from n8n..."
+          rows={12}
+          className="edit-textarea"
+        />
+      </div>
     </div>
   )
 }

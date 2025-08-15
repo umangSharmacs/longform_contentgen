@@ -17,10 +17,6 @@ const NewRunForm = ({ onFetchData, isLoading }) => {
     }
   };
 
-  const handleFetchData = () => {
-    onFetchData({ minDate, maxDate, dataType });
-  };
-
   return (
     <div className="new-run-form">
       <div className="new-run-header">
@@ -79,18 +75,8 @@ const NewRunForm = ({ onFetchData, isLoading }) => {
         disabled={isLoading}
         className="start-new-run-button"
       >
-        {isLoading ? 'Starting...' : 'Start a new run'}
+        {isLoading ? 'Starting...' : (showOptions ? 'Fetch Data' : 'Start a new run')}
       </button>
-
-      {showOptions && (
-        <button
-          onClick={handleFetchData}
-          disabled={isLoading}
-          className="fetch-data-button"
-        >
-          {isLoading ? 'Fetching...' : 'Fetch Data'}
-        </button>
-      )}
     </div>
   );
 };
