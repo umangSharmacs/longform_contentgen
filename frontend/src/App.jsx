@@ -20,10 +20,71 @@ function App() {
   const [currentRunId, setCurrentRunId] = useState(null)
   const [finalData, setFinalData] = useState(null)
   const [processingData, setProcessingData] = useState(null)
+  const [allRunData, setAllRunData] = useState(null)
+
+  // Navigation functions for PhaseFlow
+  const handleNavigateBack = () => {
+    const phases = ['search', 'selection', 'topics', 'processing', 'review']
+    const currentIndex = phases.indexOf(currentPhase)
+    
+    if (currentIndex > 0) {
+      const previousPhase = phases[currentIndex - 1]
+      console.log(`Navigating back from ${currentPhase} to ${previousPhase}`)
+      
+      switch (previousPhase) {
+        case 'search':
+          setCurrentPhase('search')
+          break
+        case 'selection':
+          setCurrentPhase('selection')
+          break
+        case 'topics':
+          setCurrentPhase('topics')
+          break
+        case 'processing':
+          setCurrentPhase('processing')
+          break
+        case 'review':
+          setCurrentPhase('review')
+          break
+      }
+    }
+  }
+
+  const handleNavigateForward = () => {
+    const phases = ['search', 'selection', 'topics', 'processing', 'review']
+    const currentIndex = phases.indexOf(currentPhase)
+    
+    if (currentIndex < phases.length - 1) {
+      const nextPhase = phases[currentIndex + 1]
+      console.log(`Navigating forward from ${currentPhase} to ${nextPhase}`)
+      
+      // Always allow forward navigation - let the phase handle its own data requirements
+      setCurrentPhase(nextPhase)
+      console.log(`Successfully navigated to ${nextPhase}`)
+    }
+  }
+
+  const canGoBack = () => {
+    const phases = ['search', 'selection', 'topics', 'processing', 'review']
+    const currentIndex = phases.indexOf(currentPhase)
+    return currentIndex > 0
+  }
+
+  const canGoForward = () => {
+    const phases = ['search', 'selection', 'topics', 'processing', 'review']
+    const currentIndex = phases.indexOf(currentPhase)
+    
+    // Always allow forward navigation if not on the last phase
+    return currentIndex < phases.length - 1
+  }
 
   const handleFetchData = async () => {
     setIsLoading(true)
     setResult(null)
+    
+    // Clear any previous run data when starting a new run
+    setAllRunData(null)
     
     try {
       const nonce = window.nslfg_ajax?.nonce
@@ -84,8 +145,10 @@ function App() {
   }
 
   const handleBackToSelection = () => {
+    console.log('Navigating back to selection with pre-loaded data')
     setCurrentPhase('selection')
-    setTopics([])
+    // Selection data is already loaded in state, no need for API calls
+    // Don't clear topics as they might be needed for later phases
   }
 
   const handleSelectionComplete = (selectedItems, topics = []) => {
@@ -115,6 +178,16 @@ function App() {
       console.log('No topics from n8n, using mock data')
       setTopics(getMockTopics())
     }
+    
+    // Update allRunData with selection data
+    setAllRunData(prev => ({
+      ...prev,
+      selection: {
+        selectedItems: selectedItems,
+        uploadedFiles: [] // This would need to be passed from SelectionPhase
+      }
+    }))
+    
     setCurrentPhase('topics')
   }
 
@@ -138,6 +211,16 @@ function App() {
   const handleTopicsComplete = (finalTopics, responseData) => {
     console.log('Topics finalized:', finalTopics)
     console.log('Response data:', responseData)
+    
+    // Update allRunData with topics data
+    setAllRunData(prev => ({
+      ...prev,
+      topics: {
+        topics: finalTopics,
+        finalTopics: finalTopics
+      }
+    }))
+    
     setCurrentPhase('processing')
   }
 
@@ -145,23 +228,37 @@ function App() {
     console.log('Processing completed with final data:', finalData)
     setFinalData(finalData)
     setProcessingData(finalData) // Store processing data for going back
+    
+    // Update allRunData with processing data
+    setAllRunData(prev => ({
+      ...prev,
+      processing: finalData
+    }))
+    
     setCurrentPhase('review')
   }
 
   const handleBackToTopics = () => {
+    console.log('Navigating back to topics with pre-loaded data')
     setCurrentPhase('topics')
+    // Topics data is already loaded in state, no need for API calls
+    // Data is preserved in allRunData for seamless navigation
   }
 
   const handleBackToProcessing = () => {
+    console.log('Navigating back to processing with pre-loaded data')
     setCurrentPhase('processing')
-    // processingData will be passed to ProcessingPhase to restore state
+    // Processing data is already loaded in state, no need for API calls
   }
 
   const handleLoadPreviousRun = (runData) => {
+    console.log('Loading previous run with complete data:', runData)
     
     // Determine the highest phase completed
     let highestPhase = 'search'
-    if (runData.topics_phase) {
+    if (runData.processing_phase) {
+      highestPhase = 'processing'
+    } else if (runData.topics_phase) {
       highestPhase = 'topics'
     } else if (runData.selection_phase) {
       highestPhase = 'selection'
@@ -169,34 +266,130 @@ function App() {
       highestPhase = 'search'
     }
     
-    // Set the current phase and load data
+    // Set the current phase and run ID
     setCurrentPhase(highestPhase)
     setCurrentRunId(runData.run_info.run_id)
     
-    // Load phase-specific data
+    // Pre-load ALL data for seamless navigation
+    const allData = {
+      search: null,
+      selection: null,
+      topics: null,
+      processing: null
+    }
+    
+    // Load search phase data
     if (runData.search_phase) {
-      const searchCriteria = JSON.parse(runData.search_phase.search_criteria)
-      setMinDate(searchCriteria.min_date || '')
-      setMaxDate(searchCriteria.max_date || '')
-      setDataType(searchCriteria.data_type || 'unused')
+      try {
+        const searchCriteria = JSON.parse(runData.search_phase.search_criteria)
+        setMinDate(searchCriteria.min_date || '')
+        setMaxDate(searchCriteria.max_date || '')
+        setDataType(searchCriteria.data_type || 'unused')
+        
+        allData.search = {
+          criteria: searchCriteria,
+          results: runData.search_phase.search_results ? JSON.parse(runData.search_phase.search_results) : null
+        }
+      } catch (e) {
+        console.error('Error parsing search phase data:', e)
+      }
     }
     
+    // Load selection phase data
     if (runData.selection_phase) {
-      const selectedItems = JSON.parse(runData.selection_phase.selected_items)
-      setResult(selectedItems) // This will show the selected items in selection phase
+      try {
+        const selectedItems = JSON.parse(runData.selection_phase.selected_items)
+        setResult(selectedItems)
+        
+        allData.selection = {
+          selectedItems: selectedItems,
+          uploadedFiles: runData.selection_phase.uploaded_files ? JSON.parse(runData.selection_phase.uploaded_files) : []
+        }
+      } catch (e) {
+        console.error('Error parsing selection phase data:', e)
+      }
     }
     
+    // Load topics phase data
     if (runData.topics_phase) {
-      const topicsData = JSON.parse(runData.topics_phase.topics)
-      setTopics(topicsData)
+      try {
+        const topicsData = JSON.parse(runData.topics_phase.topics)
+        setTopics(topicsData)
+        
+        allData.topics = {
+          topics: topicsData,
+          finalTopics: runData.topics_phase.final_topics ? JSON.parse(runData.topics_phase.final_topics) : topicsData
+        }
+      } catch (e) {
+        console.error('Error parsing topics phase data:', e)
+      }
     }
+    
+    // Load processing phase data
+    if (runData.processing_phase) {
+      const processingData = {
+        research: null,
+        newsletter: null,
+        qc: null,
+        topics: allData.topics?.topics || null
+      }
+      
+      // Load research data
+      if (runData.processing_phase.research_results) {
+        try {
+          const researchResults = JSON.parse(runData.processing_phase.research_results)
+          if (researchResults && researchResults.length > 0) {
+            processingData.research = researchResults[0]
+          }
+        } catch (e) {
+          console.error('Error parsing research results:', e)
+        }
+      }
+      
+      // Load newsletter data
+      if (runData.processing_phase.newsletter_results) {
+        try {
+          const newsletterResults = JSON.parse(runData.processing_phase.newsletter_results)
+          if (newsletterResults && newsletterResults.length > 0) {
+            processingData.newsletter = newsletterResults[0]
+          }
+        } catch (e) {
+          console.error('Error parsing newsletter results:', e)
+        }
+      }
+      
+      // Load QC data
+      if (runData.processing_phase.qc_results) {
+        try {
+          const qcResults = JSON.parse(runData.processing_phase.qc_results)
+          if (qcResults && qcResults.length > 0) {
+            processingData.qc = qcResults[0]
+          }
+        } catch (e) {
+          console.error('Error parsing QC results:', e)
+        }
+      }
+      
+      setProcessingData(processingData)
+      allData.processing = processingData
+    }
+    
+    // Store all data for navigation
+    setAllRunData(allData)
+    console.log('All run data loaded and ready for navigation:', allData)
   }
 
   // Render processing phase
   if (currentPhase === 'processing') {
     return (
       <div className="app processing-app">
-        <PhaseFlow currentPhase={currentPhase} />
+        <PhaseFlow 
+          currentPhase={currentPhase}
+          onNavigateBack={handleNavigateBack}
+          onNavigateForward={handleNavigateForward}
+          canGoBack={canGoBack()}
+          canGoForward={canGoForward()}
+        />
         
         <header className="app-header">
           <h1>NeedleSpotter LongformGen</h1>
@@ -209,6 +402,7 @@ function App() {
             onComplete={handleProcessingComplete}
             onBack={handleBackToTopics}
             initialData={processingData}
+            allRunData={allRunData}
           />
         </main>
       </div>
@@ -217,9 +411,18 @@ function App() {
 
   // Render review phase
   if (currentPhase === 'review') {
+    // Get final data from either finalData or allRunData
+    const reviewData = finalData || allRunData?.processing || null
+    
     return (
       <div className="app review-app">
-        <PhaseFlow currentPhase={currentPhase} />
+        <PhaseFlow 
+          currentPhase={currentPhase}
+          onNavigateBack={handleNavigateBack}
+          onNavigateForward={handleNavigateForward}
+          canGoBack={canGoBack()}
+          canGoForward={canGoForward()}
+        />
         
         <header className="app-header">
           <h1>NeedleSpotter LongformGen</h1>
@@ -228,8 +431,9 @@ function App() {
 
         <main className="app-main">
           <ReviewPhase 
-            finalData={finalData}
+            finalData={reviewData}
             onBack={handleBackToProcessing}
+            allRunData={allRunData}
           />
         </main>
       </div>
@@ -240,7 +444,13 @@ function App() {
   if (currentPhase === 'topics') {
     return (
       <div className="app selection-app">
-        <PhaseFlow currentPhase={currentPhase} />
+        <PhaseFlow 
+          currentPhase={currentPhase}
+          onNavigateBack={handleNavigateBack}
+          onNavigateForward={handleNavigateForward}
+          canGoBack={canGoBack()}
+          canGoForward={canGoForward()}
+        />
         
         <header className="app-header">
           <h1>NeedleSpotter LongformGen</h1>
@@ -253,6 +463,7 @@ function App() {
             runId={currentRunId}
             onBack={handleBackToSelection}
             onProceed={handleTopicsComplete}
+            allRunData={allRunData}
           />
         </main>
       </div>
@@ -263,7 +474,13 @@ function App() {
   if (currentPhase === 'selection' && result && !result.error) {
     return (
       <div className="app selection-app">
-        <PhaseFlow currentPhase={currentPhase} />
+        <PhaseFlow 
+          currentPhase={currentPhase}
+          onNavigateBack={handleNavigateBack}
+          onNavigateForward={handleNavigateForward}
+          canGoBack={canGoBack()}
+          canGoForward={canGoForward()}
+        />
         
         <header className="app-header">
           <h1>NeedleSpotter LongformGen</h1>
@@ -276,6 +493,7 @@ function App() {
             runId={currentRunId}
             onBack={handleBackToSearch}
             onProceed={handleSelectionComplete}
+            allRunData={allRunData}
           />
         </main>
       </div>
@@ -285,7 +503,13 @@ function App() {
   // Render search phase
   return (
     <div className="app search-phase">
-      <PhaseFlow currentPhase={currentPhase} />
+      <PhaseFlow 
+        currentPhase={currentPhase}
+        onNavigateBack={handleNavigateBack}
+        onNavigateForward={handleNavigateForward}
+        canGoBack={canGoBack()}
+        canGoForward={canGoForward()}
+      />
       
       <header className="app-header">
         <h1>NeedleSpotter LongformGen</h1>

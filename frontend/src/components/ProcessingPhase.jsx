@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import './ProcessingPhase.css'
 
-function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
+function ProcessingPhase({ runId, onBack, onComplete, initialData, allRunData }) {
   const [researchData, setResearchData] = useState(null)
   const [editedResearch, setEditedResearch] = useState(null)
   const [newsletterData, setNewsletterData] = useState(null)
@@ -28,12 +28,18 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
 
   useEffect(() => {
     initializeProcessing()
-  }, [])
+  }, [runId])
 
   // Restore state from initialData if available
   useEffect(() => {
     if (initialData) {
       console.log('Restoring processing state from initialData:', initialData)
+      
+      // Set topics if available in initialData
+      if (initialData.topics && initialData.topics.length > 0) {
+        console.log('Restoring topics from initialData:', initialData.topics)
+        setTopics(initialData.topics)
+      }
       
       if (initialData.research) {
         console.log('Restoring research data:', initialData.research)
@@ -66,9 +72,104 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
     }
   }, [initialData])
 
+  // Restore state from allRunData if available (takes precedence over initialData)
+  useEffect(() => {
+    if (allRunData) {
+      console.log('Restoring processing state from allRunData:', allRunData)
+      
+      // Set topics if available in allRunData
+      if (allRunData.topics?.topics && allRunData.topics.topics.length > 0) {
+        console.log('Restoring topics from allRunData:', allRunData.topics.topics)
+        setTopics(allRunData.topics.topics)
+      }
+      
+      if (allRunData.processing?.research) {
+        console.log('Restoring research data from allRunData:', allRunData.processing.research)
+        setResearchData(allRunData.processing.research)
+        setEditedResearch(allRunData.processing.research)
+        setProcessingStatus(prev => ({ ...prev, deepResearch: 'completed' }))
+      } else {
+        console.log('No research data found in allRunData')
+      }
+      
+      if (allRunData.processing?.newsletter) {
+        console.log('Restoring newsletter data from allRunData:', allRunData.processing.newsletter)
+        setNewsletterData(allRunData.processing.newsletter)
+        setEditedNewsletter(allRunData.processing.newsletter)
+        setProcessingStatus(prev => ({ ...prev, newsletterWriting: 'completed' }))
+        setExpandedSections(prev => ({ ...prev, newsletterWriting: true }))
+      } else {
+        console.log('No newsletter data found in allRunData')
+      }
+      
+      if (allRunData.processing?.qc) {
+        console.log('Restoring QC data from allRunData:', allRunData.processing.qc)
+        setQcData(allRunData.processing.qc)
+        setEditedQcData(allRunData.processing.qc)
+        setProcessingStatus(prev => ({ ...prev, qualityControl: 'completed' }))
+        setExpandedSections(prev => ({ ...prev, qualityControl: true }))
+      } else {
+        console.log('No QC data found in allRunData')
+      }
+    }
+  }, [allRunData])
+
   const initializeProcessing = async () => {
     try {
-      await loadTopics()
+      console.log('Initializing processing with pre-loaded data:', { allRunData, initialData })
+      
+      // Use pre-loaded data if available
+      if (allRunData) {
+        console.log('Using pre-loaded data for initialization')
+        
+        // Set topics from pre-loaded data
+        if (allRunData.topics?.topics && topics.length === 0) {
+          setTopics(allRunData.topics.topics)
+          console.log('Topics set from pre-loaded data:', allRunData.topics.topics)
+        }
+        
+        // Set research data from pre-loaded data
+        if (allRunData.processing?.research && !researchData) {
+          setResearchData(allRunData.processing.research)
+          setEditedResearch(allRunData.processing.research)
+          setProcessingStatus(prev => ({ ...prev, deepResearch: 'completed' }))
+          console.log('Research data set from pre-loaded data')
+        }
+        
+        // Set newsletter data from pre-loaded data
+        if (allRunData.processing?.newsletter && !newsletterData) {
+          setNewsletterData(allRunData.processing.newsletter)
+          setEditedNewsletter(allRunData.processing.newsletter)
+          setProcessingStatus(prev => ({ ...prev, newsletterWriting: 'completed' }))
+          setExpandedSections(prev => ({ ...prev, newsletterWriting: true }))
+          console.log('Newsletter data set from pre-loaded data')
+        }
+        
+        // Set QC data from pre-loaded data
+        if (allRunData.processing?.qc && !qcData) {
+          setQcData(allRunData.processing.qc)
+          setEditedQcData(allRunData.processing.qc)
+          setProcessingStatus(prev => ({ ...prev, qualityControl: 'completed' }))
+          setExpandedSections(prev => ({ ...prev, qualityControl: true }))
+          console.log('QC data set from pre-loaded data')
+        }
+        
+        return // Exit early since we have pre-loaded data
+      }
+      
+      // Fallback to API calls if no pre-loaded data
+      console.log('No pre-loaded data, falling back to API calls')
+      
+      // Only load topics if we don't have them already
+      if (topics.length === 0) {
+        await loadTopics()
+      }
+      
+      // Try to load research data if not already loaded
+      if (!researchData && !initialData?.research) {
+        await loadResearchData()
+      }
+      
       // Don't automatically start deep research - let user initiate it
     } catch (error) {
       console.error('Processing initialization error:', error)
@@ -115,6 +216,7 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
         throw new Error('Security token not available')
       }
 
+      // First try to get topics from get-run-context
       const response = await fetch('/wp-admin/admin-ajax.php', {
         method: 'POST',
         headers: {
@@ -131,13 +233,129 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
       
       if (data.success) {
         const topicsData = data.data.topics || []
-        setTopics(topicsData)
-        console.log('Loaded topics:', topicsData)
+        if (topicsData.length > 0) {
+          setTopics(topicsData)
+          console.log('Loaded topics from get-run-context:', topicsData)
+          return
+        } else {
+          console.log('No topics found in get-run-context response')
+        }
       } else {
-        console.error('Failed to load topics:', data.data)
+        console.error('Failed to load topics from get-run-context:', data.data)
       }
+      
+      // Fallback: try to get topics from get-run-data
+      console.log('Trying fallback method to load topics...')
+      const fallbackResponse = await fetch('/wp-admin/admin-ajax.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'get-run-data-longformgen',
+          run_id: runId,
+          nonce: nonce
+        })
+      })
+
+      const fallbackData = await fallbackResponse.json()
+      
+      if (fallbackData.success && fallbackData.data.topics_phase) {
+        try {
+          const topicsData = JSON.parse(fallbackData.data.topics_phase.topics)
+          if (topicsData && topicsData.length > 0) {
+            setTopics(topicsData)
+            console.log('Loaded topics from fallback method:', topicsData)
+            return
+          }
+        } catch (e) {
+          console.error('Error parsing topics from fallback method:', e)
+        }
+      }
+      
+      console.log('Could not load topics from any method')
     } catch (error) {
       console.error('Error loading topics:', error)
+    }
+  }
+
+  const loadResearchData = async () => {
+    try {
+      const nonce = window.nslfg_ajax?.nonce
+      if (!nonce) {
+        throw new Error('Security token not available')
+      }
+
+      console.log('Loading research data from database...')
+      
+      // First try to get research data from get-run-data
+      const response = await fetch('/wp-admin/admin-ajax.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'get-run-data-longformgen',
+          run_id: runId,
+          nonce: nonce
+        })
+      })
+
+      const data = await response.json()
+      
+      if (data.success && data.data.processing_phase) {
+        const processingData = data.data.processing_phase
+        console.log('Processing phase data:', processingData)
+        
+        if (processingData.research_results) {
+          try {
+            const researchResults = JSON.parse(processingData.research_results)
+            console.log('Research results found:', researchResults)
+            if (researchResults && researchResults.length > 0) {
+              setResearchData(researchResults[0])
+              setEditedResearch(researchResults[0])
+              setProcessingStatus(prev => ({ ...prev, deepResearch: 'completed' }))
+              console.log('Research data loaded successfully')
+              return
+            }
+          } catch (e) {
+            console.error('Error parsing research results:', e)
+          }
+        } else {
+          console.log('No research_results field found')
+        }
+      } else {
+        console.error('Failed to load research data from get-run-data:', data.data)
+      }
+      
+      // Fallback: try to check research status
+      console.log('Trying to check research status...')
+      const statusResponse = await fetch('/wp-admin/admin-ajax.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          action: 'check-research-status',
+          run_id: runId,
+          nonce: nonce
+        })
+      })
+
+      const statusData = await statusResponse.json()
+      console.log('Research status response:', statusData)
+      
+      if (statusData.success && statusData.data.research_completed) {
+        console.log('Research is completed, loading data...')
+        setResearchData(statusData.data.research_data)
+        setEditedResearch(statusData.data.research_data)
+        setProcessingStatus(prev => ({ ...prev, deepResearch: 'completed' }))
+        console.log('Research data loaded from status check')
+      } else {
+        console.log('Research not completed or no data available')
+      }
+    } catch (error) {
+      console.error('Error loading research data:', error)
     }
   }
 
@@ -238,11 +456,11 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
         }
 
         attempts++
-        setTimeout(poll, 5000) // Poll every 5 seconds
+        setTimeout(poll, 60000) // Poll every minute
       } catch (error) {
         console.error('Error polling for research completion:', error)
         attempts++
-        setTimeout(poll, 5000)
+        setTimeout(poll, 60000)
       }
     }
 
@@ -342,11 +560,11 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
         }
 
         attempts++
-        setTimeout(poll, 5000) // Poll every 5 seconds
+        setTimeout(poll, 60000) // Poll every minute
       } catch (error) {
         console.error('Error polling for newsletter completion:', error)
         attempts++
-        setTimeout(poll, 5000)
+        setTimeout(poll, 60000)
       }
     }
 
@@ -444,11 +662,11 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
         }
 
         attempts++
-        setTimeout(poll, 5000) // Poll every 5 seconds
+        setTimeout(poll, 60000) // Poll every minute
       } catch (error) {
         console.error('Error polling for QC completion:', error)
         attempts++
-        setTimeout(poll, 5000)
+        setTimeout(poll, 60000)
       }
     }
 
@@ -613,6 +831,11 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
         throw new Error('Security token not available')
       }
 
+      console.log('=== DEBUGGING DATABASE DATA ===')
+      console.log('Run ID:', runId)
+      console.log('Current topics state:', topics)
+      console.log('Current initialData:', initialData)
+
       const response = await fetch('/wp-admin/admin-ajax.php', {
         method: 'POST',
         headers: {
@@ -627,6 +850,51 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
 
       const data = await response.json()
       console.log('Database data for run:', data)
+      
+      if (data.success) {
+        const runData = data.data
+        console.log('Run info:', runData.run_info)
+        console.log('Search phase:', runData.search_phase)
+        console.log('Selection phase:', runData.selection_phase)
+        console.log('Topics phase:', runData.topics_phase)
+        console.log('Processing phase:', runData.processing_phase)
+        
+        // Try to load topics from the database data
+        if (runData.topics_phase && runData.topics_phase.topics) {
+          try {
+            const topicsData = JSON.parse(runData.topics_phase.topics)
+            console.log('Topics found in database:', topicsData)
+            if (topicsData && topicsData.length > 0) {
+              setTopics(topicsData)
+              console.log('Topics loaded from database data')
+            }
+          } catch (e) {
+            console.error('Error parsing topics from database:', e)
+          }
+        }
+        
+        // Try to load research data from the database
+        if (runData.processing_phase && runData.processing_phase.research_results) {
+          try {
+            const researchResults = JSON.parse(runData.processing_phase.research_results)
+            console.log('Research results found in database:', researchResults)
+            if (researchResults && researchResults.length > 0) {
+              console.log('Research data available:', researchResults[0])
+              // Set the research data directly
+              setResearchData(researchResults[0])
+              setEditedResearch(researchResults[0])
+              setProcessingStatus(prev => ({ ...prev, deepResearch: 'completed' }))
+              console.log('Research data loaded from database')
+            }
+          } catch (e) {
+            console.error('Error parsing research results from database:', e)
+          }
+        } else {
+          console.log('No research_results field found in processing_phase')
+        }
+      } else {
+        console.error('Failed to get database data:', data.data)
+      }
     } catch (error) {
       console.error('Error checking database data:', error)
     }
@@ -644,9 +912,14 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
     <div className="processing-phase">
       <div className="processing-header">
         <h2>Content Generation Pipeline</h2>
-        <button onClick={onBack} className="back-button">
-          Back to Topics
-        </button>
+        <div className="header-buttons">
+          <button onClick={onBack} className="back-button">
+            Back to Topics
+          </button>
+          <button onClick={checkDatabaseData} className="debug-button">
+            Debug Data
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -660,6 +933,51 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Topics Display */}
+      {topics.length > 0 ? (
+        <div className="topics-display">
+          <h3>Loaded Topics ({topics.length})</h3>
+          <div className="topics-list">
+            {topics.map((topic, index) => (
+              <div key={index} className="topic-item">
+                <h4>{topic.topic_name || topic.topic}</h4>
+                <p>{topic.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="topics-display">
+          <h3>No Topics Loaded</h3>
+          <p>Topics are being loaded from the database. If this persists, try clicking the "Debug Data" button.</p>
+          <button onClick={loadTopics} className="action-button primary">
+            Manually Load Topics
+          </button>
+        </div>
+      )}
+
+      {/* Research Data Display */}
+      {researchData ? (
+        <div className="research-display">
+          <h3>Research Data Loaded</h3>
+          <div className="research-info">
+            <p><strong>Status:</strong> {processingStatus.deepResearch}</p>
+            <p><strong>Content Available:</strong> {researchData.deepresearch_original ? 'Yes' : 'No'}</p>
+            {researchData.deepresearch_original && (
+              <p><strong>Content Length:</strong> {researchData.deepresearch_original.length} characters</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="research-display">
+          <h3>No Research Data Loaded</h3>
+          <p>Research data is not available. Try clicking "Check for Existing Research Data" in the Deep Research section.</p>
+          <button onClick={loadResearchData} className="action-button primary">
+            Load Research Data
+          </button>
         </div>
       )}
 
@@ -721,6 +1039,18 @@ function ProcessingPhase({ runId, onBack, onComplete, initialData }) {
                   <div className="error-message">
                     <p>ERROR: Deep research failed. Please try again.</p>
                   </div>
+                  <button onClick={loadResearchData} className="action-button primary">
+                    Try to Load Research Data
+                  </button>
+                </div>
+              )}
+              
+              {processingStatus.deepResearch === 'pending' && (
+                <div className="step-content">
+                  <p>Deep research has not been started yet. Click "Start Research" to begin.</p>
+                  <button onClick={loadResearchData} className="action-button primary">
+                    Check for Existing Research Data
+                  </button>
                 </div>
               )}
             </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import './ReviewPhase.css'
 
-function ReviewPhase({ finalData, onBack }) {
+function ReviewPhase({ finalData, onBack, allRunData }) {
   const [isDownloading, setIsDownloading] = useState(false)
 
   const handleDownloadDocx = async () => {
@@ -48,48 +48,94 @@ function ReviewPhase({ finalData, onBack }) {
   }
 
   const getFinalContent = () => {
-    // Try to get QC content first (most final)
-    if (finalData.qc) {
-      if (finalData.qc.qc_content) {
-        return finalData.qc.qc_content
-      } else if (finalData.qc.final_content) {
-        return finalData.qc.final_content
-      } else if (typeof finalData.qc === 'string') {
-        return finalData.qc
+    // If no finalData, try to get from allRunData
+    if (!finalData && allRunData?.processing) {
+      const processingData = allRunData.processing
+      
+      // Try to get QC content first (most final)
+      if (processingData.qc) {
+        if (processingData.qc.qc_content) {
+          return processingData.qc.qc_content
+        } else if (processingData.qc.final_content) {
+          return processingData.qc.final_content
+        } else if (typeof processingData.qc === 'string') {
+          return processingData.qc
+        }
+      }
+      
+      // Try newsletter content next
+      if (processingData.newsletter) {
+        if (processingData.newsletter.newsletter_content) {
+          return processingData.newsletter.newsletter_content
+        } else if (processingData.newsletter.content) {
+          return processingData.newsletter.content
+        } else if (typeof processingData.newsletter === 'string') {
+          return processingData.newsletter
+        }
+      }
+      
+      // Try research content last
+      if (processingData.research) {
+        if (processingData.research.deepresearch_original) {
+          return processingData.research.deepresearch_original
+        } else if (processingData.research.deepresearch_improved_text) {
+          return processingData.research.deepresearch_improved_text
+        } else if (processingData.research.content) {
+          return processingData.research.content
+        } else if (typeof processingData.research === 'string') {
+          return processingData.research
+        }
       }
     }
     
-    // Try newsletter content next
-    if (finalData.newsletter) {
-      if (finalData.newsletter.newsletter_content) {
-        return finalData.newsletter.newsletter_content
-      } else if (finalData.newsletter.content) {
-        return finalData.newsletter.content
-      } else if (typeof finalData.newsletter === 'string') {
-        return finalData.newsletter
+    // If we have finalData, use the original logic
+    if (finalData) {
+      // Try to get QC content first (most final)
+      if (finalData.qc) {
+        if (finalData.qc.qc_content) {
+          return finalData.qc.qc_content
+        } else if (finalData.qc.final_content) {
+          return finalData.qc.final_content
+        } else if (typeof finalData.qc === 'string') {
+          return finalData.qc
+        }
       }
-    }
-    
-    // Try research content last
-    if (finalData.research) {
-      if (finalData.research.deepresearch_original) {
-        return finalData.research.deepresearch_original
-      } else if (finalData.research.deepresearch_improved_text) {
-        return finalData.research.deepresearch_improved_text
-      } else if (finalData.research.content) {
-        return finalData.research.content
-      } else if (typeof finalData.research === 'string') {
-        return finalData.research
+      
+      // Try newsletter content next
+      if (finalData.newsletter) {
+        if (finalData.newsletter.newsletter_content) {
+          return finalData.newsletter.newsletter_content
+        } else if (finalData.newsletter.content) {
+          return finalData.newsletter.content
+        } else if (typeof finalData.newsletter === 'string') {
+          return finalData.newsletter
+        }
       }
+      
+      // Try research content last
+      if (finalData.research) {
+        if (finalData.research.deepresearch_original) {
+          return finalData.research.deepresearch_original
+        } else if (finalData.research.deepresearch_improved_text) {
+          return finalData.research.deepresearch_improved_text
+        } else if (finalData.research.content) {
+          return finalData.research.content
+        } else if (typeof finalData.research === 'string') {
+          return finalData.research
+        }
+      }
+      
+      // If no structured data, try to find any content
+      if (typeof finalData === 'string') {
+        return finalData
+      }
+      
+      // Last resort - show the raw data for debugging
+      return JSON.stringify(finalData, null, 2)
     }
     
-    // If no structured data, try to find any content
-    if (typeof finalData === 'string') {
-      return finalData
-    }
-    
-    // Last resort - show the raw data for debugging
-    return JSON.stringify(finalData, null, 2)
+    // If no data at all, show a helpful message
+    return "No content available for review. Please complete the processing phase first."
   }
 
   return (
@@ -124,19 +170,19 @@ function ReviewPhase({ finalData, onBack }) {
             <div className="summary-item">
               <span className="summary-label">Research Phase:</span>
               <span className="summary-value">
-                {finalData.research ? 'Completed' : 'Not available'}
+                {(finalData?.research || allRunData?.processing?.research) ? 'Completed' : 'Not available'}
               </span>
             </div>
             <div className="summary-item">
               <span className="summary-label">Newsletter Phase:</span>
               <span className="summary-value">
-                {finalData.newsletter ? 'Completed' : 'Not available'}
+                {(finalData?.newsletter || allRunData?.processing?.newsletter) ? 'Completed' : 'Not available'}
               </span>
             </div>
             <div className="summary-item">
               <span className="summary-label">Quality Control:</span>
               <span className="summary-value">
-                {finalData.qc ? 'Completed' : 'Not available'}
+                {(finalData?.qc || allRunData?.processing?.qc) ? 'Completed' : 'Not available'}
               </span>
             </div>
             <div className="summary-item">

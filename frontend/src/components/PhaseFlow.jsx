@@ -1,7 +1,7 @@
 import React from 'react'
 import './PhaseFlow.css'
 
-function PhaseFlow({ currentPhase }) {
+function PhaseFlow({ currentPhase, onNavigateBack, onNavigateForward, canGoBack, canGoForward }) {
   const phases = [
     { id: 'search', label: 'Search', description: 'Fetch Data' },
     { id: 'selection', label: 'Selection', description: 'Choose Items' },
@@ -19,6 +19,15 @@ function PhaseFlow({ currentPhase }) {
   return (
     <div className="phase-flow">
       <div className="phase-flow-container">
+        <button 
+          className={`nav-button nav-back ${!canGoBack ? 'disabled' : ''}`}
+          onClick={onNavigateBack}
+          disabled={!canGoBack}
+          title="Go to previous phase"
+        >
+          <span className="nav-arrow">←</span>
+        </button>
+        
         {phases.map((phase, index) => {
           const isActive = phase.id === currentPhase
           const isCompleted = index < currentIndex
@@ -46,6 +55,15 @@ function PhaseFlow({ currentPhase }) {
             </div>
           )
         })}
+        
+        <button 
+          className={`nav-button nav-forward ${!canGoForward ? 'disabled' : ''}`}
+          onClick={onNavigateForward}
+          disabled={!canGoForward}
+          title="Go to next phase"
+        >
+          <span className="nav-arrow">→</span>
+        </button>
       </div>
     </div>
   )
